@@ -44,8 +44,6 @@ type DrawerActions = {
   clearCells: () => void
   setDivisions: (cellId: string, divisionsX: number, divisionsY: number) => void
   setStackingLip: (cellId: string, enabled: boolean) => void
-  setScoop: (cellId: string, enabled: boolean) => void
-  setLabelTab: (cellId: string, enabled: boolean) => void
   undo: () => void
   redo: () => void
 }
@@ -360,24 +358,6 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
     }))
   }, [setState])
 
-  const setScoop = useCallback((cellId: string, enabled: boolean) => {
-    setState((prev) => ({
-      ...prev,
-      cells: prev.cells.map((cell) =>
-        cell.id === cellId ? { ...cell, scoop: enabled } : cell
-      ),
-    }))
-  }, [setState])
-
-  const setLabelTab = useCallback((cellId: string, enabled: boolean) => {
-    setState((prev) => ({
-      ...prev,
-      cells: prev.cells.map((cell) =>
-        cell.id === cellId ? { ...cell, labelTab: enabled } : cell
-      ),
-    }))
-  }, [setState])
-
   const selectedCell = useMemo(
     () => state.cells.find((c) => c.id === state.selectedCellId) ?? null,
     [state.cells, state.selectedCellId]
@@ -404,8 +384,6 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
       clearCells,
       setDivisions,
       setStackingLip,
-      setScoop,
-      setLabelTab,
       undo,
       redo,
     }),
@@ -423,8 +401,6 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
       clearCells,
       setDivisions,
       setStackingLip,
-      setScoop,
-      setLabelTab,
       undo,
       redo,
     ]

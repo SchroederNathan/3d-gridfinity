@@ -11,8 +11,6 @@ import {
   Magnet,
   Trash2,
   Layers,
-  Waves,
-  Tag,
   Ruler,
   RulerDimensionLine,
   SquareRoundCorner,
@@ -1039,40 +1037,6 @@ function HudToolbar() {
                 </button>
               </TooltipTrigger>
               <TooltipContent>Stacking Lip {meta.selectedCell.stackingLip !== false ? '(on)' : '(off)'}</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => actions.setScoop(meta.selectedCell!.id, !meta.selectedCell!.scoop)}
-                  aria-label="Toggle Scoop Ramp"
-                  className={`h-7 w-7 flex items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 ${
-                    meta.selectedCell.scoop
-                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                      : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400'
-                  }`}
-                >
-                  <Waves className="w-4 h-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Scoop Ramp {meta.selectedCell.scoop ? '(on)' : '(off)'}</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => actions.setLabelTab(meta.selectedCell!.id, !meta.selectedCell!.labelTab)}
-                  aria-label="Toggle Label Tab"
-                  className={`h-7 w-7 flex items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 ${
-                    meta.selectedCell.labelTab
-                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                      : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400'
-                  }`}
-                >
-                  <Tag className="w-4 h-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Label Tab {meta.selectedCell.labelTab ? '(on)' : '(off)'}</TooltipContent>
             </Tooltip>
           </div>
         )}
