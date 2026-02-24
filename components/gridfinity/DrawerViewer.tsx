@@ -734,13 +734,13 @@ function HudToolbar() {
   return (
     <nav
       aria-label="Drawer controls"
-      className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-auto"
+      className="absolute bottom-4 left-4 right-4 flex justify-center pointer-events-auto"
       style={{ touchAction: 'manipulation' }}
     >
-      <div className="flex items-center gap-2 py-2 px-3 bg-zinc-900/90 backdrop-blur-md border border-zinc-700/50 rounded-xl">
+      <div className="flex flex-wrap items-center justify-center gap-2 py-2 px-3 bg-zinc-900/90 backdrop-blur-md border border-zinc-700/50 rounded-xl max-w-full">
         {/* 1. Drawer Dimensions */}
-        <div className="flex items-center gap-1.5">
-          <Ruler className="w-4 h-4 text-zinc-400 shrink-0" />
+        <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
+          <Ruler className="w-4 h-4 text-zinc-400 shrink-0" aria-hidden="true" />
           <input
             type="number"
             value={state.drawerWidthMm}
@@ -761,12 +761,9 @@ function HudToolbar() {
           <span className="text-xs text-zinc-400">mm</span>
         </div>
 
-        {/* Divider */}
-        <span className="w-px h-6 bg-zinc-700" aria-hidden="true" />
-
         {/* 2. Grid */}
-        <div className="flex items-center gap-1.5">
-          <Grid3x3 className="w-4 h-4 text-zinc-400 shrink-0" />
+        <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
+          <Grid3x3 className="w-4 h-4 text-zinc-400 shrink-0" aria-hidden="true" />
           <Stepper
             value={state.gridUnitsX}
             onDecrement={() => actions.setGridUnits(state.gridUnitsX - 1, state.gridUnitsY)}
@@ -786,12 +783,9 @@ function HudToolbar() {
           />
         </div>
 
-        {/* Divider */}
-        <span className="w-px h-6 bg-zinc-700" aria-hidden="true" />
-
         {/* 3. Height */}
-        <div className="flex items-center gap-1.5">
-          <RulerDimensionLine className="w-4 h-4 text-zinc-400 shrink-0 rotate-90" />
+        <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
+          <RulerDimensionLine className="w-4 h-4 text-zinc-400 shrink-0 rotate-90" aria-hidden="true" />
           <Stepper
             value={state.heightUnits}
             onDecrement={() => actions.setHeightUnits(state.heightUnits - 1)}
@@ -803,12 +797,9 @@ function HudToolbar() {
           />
         </div>
 
-        {/* Divider */}
-        <span className="w-px h-6 bg-zinc-700" aria-hidden="true" />
-
         {/* 4. Border Radius */}
-        <div className="flex items-center gap-1.5">
-          <SquareRoundCorner className="w-4 h-4 text-zinc-400 shrink-0" />
+        <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
+          <SquareRoundCorner className="w-4 h-4 text-zinc-400 shrink-0" aria-hidden="true" />
           <Stepper
             value={state.borderRadius}
             onDecrement={() => actions.setBorderRadius(Math.max(LIMITS.BORDER_RADIUS_MIN, +(state.borderRadius - 0.5).toFixed(1)))}
@@ -820,12 +811,9 @@ function HudToolbar() {
           />
         </div>
 
-        {/* Divider */}
-        <span className="w-px h-6 bg-zinc-700" aria-hidden="true" />
-
         {/* 5. Magnet Holes */}
-        <div className="flex items-center gap-1.5">
-          <Magnet className="w-4 h-4 text-zinc-400 shrink-0" />
+        <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
+          <Magnet className="w-4 h-4 text-zinc-400 shrink-0" aria-hidden="true" />
           <ToggleSwitch
             checked={state.magnetHoles}
             onChange={actions.setMagnetHoles}
@@ -833,11 +821,8 @@ function HudToolbar() {
           />
         </div>
 
-        {/* Divider */}
-        <span className="w-px h-6 bg-zinc-700" aria-hidden="true" />
-
         {/* 6. Add / Delete Cell */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
           <button
             onClick={() => actions.addCell()}
             disabled={!canAddCell}
@@ -857,11 +842,8 @@ function HudToolbar() {
           )}
         </div>
 
-        {/* Divider */}
-        <span className="w-px h-6 bg-zinc-700" aria-hidden="true" />
-
         {/* 7. Export */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
           <button
             onClick={exportBaseplate}
             disabled={isExporting || state.gridUnitsX === 0 || state.gridUnitsY === 0}
