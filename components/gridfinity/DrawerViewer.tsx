@@ -628,10 +628,32 @@ function HudOverlay() {
 
   return (
     <div className="absolute inset-0 pointer-events-none">
-      {/* Top-left grid size controls */}
-      <div className="absolute top-3 left-3 flex items-center gap-2">
-        <div className="pointer-events-auto px-2 py-1.5 bg-zinc-900/80 backdrop-blur-sm rounded-lg border border-zinc-700/50 flex items-center gap-2">
-          {/* Grid X */}
+      {/* Top-left: Drawer size + Grid controls */}
+      <div className="absolute top-3 left-3 flex flex-col gap-2">
+        {/* Drawer dimensions */}
+        <div className="pointer-events-auto px-3 py-2 bg-zinc-900/80 backdrop-blur-sm rounded-lg border border-zinc-700/50 flex items-center gap-2">
+          <span className="text-xs text-zinc-500 uppercase tracking-wider">Drawer</span>
+          <input
+            type="number"
+            value={state.drawerWidthMm}
+            min={GRIDFINITY.CELL_SIZE}
+            onChange={(e) => actions.setDrawerSize(Number(e.target.value), state.drawerDepthMm)}
+            className="w-16 px-1.5 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-sm text-zinc-200 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+          />
+          <span className="text-xs text-zinc-500">×</span>
+          <input
+            type="number"
+            value={state.drawerDepthMm}
+            min={GRIDFINITY.CELL_SIZE}
+            onChange={(e) => actions.setDrawerSize(state.drawerWidthMm, Number(e.target.value))}
+            className="w-16 px-1.5 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-sm text-zinc-200 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+          />
+          <span className="text-xs text-zinc-500">mm</span>
+        </div>
+
+        {/* Grid size controls */}
+        <div className="pointer-events-auto px-3 py-1.5 bg-zinc-900/80 backdrop-blur-sm rounded-lg border border-zinc-700/50 flex items-center gap-2">
+          <span className="text-xs text-zinc-500 uppercase tracking-wider">Grid</span>
           <div className="flex items-center gap-1">
             <button
               onClick={() => actions.setGridUnits(state.gridUnitsX - 1, state.gridUnitsY)}
@@ -645,7 +667,7 @@ function HudOverlay() {
             </span>
             <button
               onClick={() => actions.setGridUnits(state.gridUnitsX + 1, state.gridUnitsY)}
-              disabled={state.gridUnitsX >= LIMITS.GRID_MAX}
+              disabled={state.gridUnitsX >= Math.min(LIMITS.GRID_MAX, Math.floor(state.drawerWidthMm / GRIDFINITY.CELL_SIZE))}
               className="w-6 h-6 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 text-xs rounded transition-colors"
             >
               +
@@ -654,7 +676,6 @@ function HudOverlay() {
 
           <span className="text-sm text-zinc-500">×</span>
 
-          {/* Grid Y */}
           <div className="flex items-center gap-1">
             <button
               onClick={() => actions.setGridUnits(state.gridUnitsX, state.gridUnitsY - 1)}
@@ -668,7 +689,7 @@ function HudOverlay() {
             </span>
             <button
               onClick={() => actions.setGridUnits(state.gridUnitsX, state.gridUnitsY + 1)}
-              disabled={state.gridUnitsY >= LIMITS.GRID_MAX}
+              disabled={state.gridUnitsY >= Math.min(LIMITS.GRID_MAX, Math.floor(state.drawerDepthMm / GRIDFINITY.CELL_SIZE))}
               className="w-6 h-6 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 text-xs rounded transition-colors"
             >
               +

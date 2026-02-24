@@ -103,20 +103,22 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
     Math.max(min, Math.min(max, value))
 
   const setDrawerSize = useCallback((widthMm: number, depthMm: number) => {
-    const grid = calculateGrid(widthMm, depthMm)
+    const maxGrid = calculateGrid(widthMm, depthMm)
     setState((prev) => {
-      // Filter out cells that would be outside new bounds
+      // Clamp current grid units to what fits in the new drawer size
+      const newGridX = Math.min(prev.gridUnitsX, maxGrid.gridX)
+      const newGridY = Math.min(prev.gridUnitsY, maxGrid.gridY)
       const validCells = prev.cells.filter(
         (cell) =>
-          cell.gridX + cell.spanX <= grid.gridX &&
-          cell.gridY + cell.spanY <= grid.gridY
+          cell.gridX + cell.spanX <= newGridX &&
+          cell.gridY + cell.spanY <= newGridY
       )
       return {
         ...prev,
         drawerWidthMm: widthMm,
         drawerDepthMm: depthMm,
-        gridUnitsX: grid.gridX,
-        gridUnitsY: grid.gridY,
+        gridUnitsX: Math.max(LIMITS.GRID_MIN, newGridX),
+        gridUnitsY: Math.max(LIMITS.GRID_MIN, newGridY),
         cells: validCells,
         selectedCellId: validCells.find((c) => c.id === prev.selectedCellId)
           ? prev.selectedCellId
@@ -126,9 +128,12 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
   }, [])
 
   const setGridUnits = useCallback((gridX: number, gridY: number) => {
-    const clampedX = Math.max(LIMITS.GRID_MIN, Math.min(LIMITS.GRID_MAX, gridX))
-    const clampedY = Math.max(LIMITS.GRID_MIN, Math.min(LIMITS.GRID_MAX, gridY))
     setState((prev) => {
+      // Cap grid units at what fits in the drawer
+      const maxGridX = Math.floor(prev.drawerWidthMm / GRIDFINITY.CELL_SIZE)
+      const maxGridY = Math.floor(prev.drawerDepthMm / GRIDFINITY.CELL_SIZE)
+      const clampedX = Math.max(LIMITS.GRID_MIN, Math.min(Math.min(LIMITS.GRID_MAX, maxGridX), gridX))
+      const clampedY = Math.max(LIMITS.GRID_MIN, Math.min(Math.min(LIMITS.GRID_MAX, maxGridY), gridY))
       const validCells = prev.cells.filter(
         (cell) =>
           cell.gridX + cell.spanX <= clampedX &&
@@ -138,8 +143,6 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
         ...prev,
         gridUnitsX: clampedX,
         gridUnitsY: clampedY,
-        drawerWidthMm: clampedX * GRIDFINITY.CELL_SIZE,
-        drawerDepthMm: clampedY * GRIDFINITY.CELL_SIZE,
         cells: validCells,
         selectedCellId: validCells.find((c) => c.id === prev.selectedCellId)
           ? prev.selectedCellId
