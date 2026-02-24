@@ -469,6 +469,47 @@ function BaseplateMesh({
   )
 }
 
+// ─── Grid Overlay ───────────────────────────────────────────
+
+function GridOverlay({ gridUnitsX, gridUnitsY }: { gridUnitsX: number; gridUnitsY: number }) {
+  const cellSize = GRIDFINITY.CELL_SIZE
+  const totalWidth = gridUnitsX * cellSize
+  const totalDepth = gridUnitsY * cellSize
+
+  const geometry = useMemo(() => {
+    const allPoints: THREE.Vector3[] = []
+
+    // Vertical lines (along Z)
+    for (let x = 0; x <= gridUnitsX; x++) {
+      const xPos = -(totalWidth / 2) + x * cellSize
+      allPoints.push(
+        new THREE.Vector3(xPos, 0, -(totalDepth / 2)),
+        new THREE.Vector3(xPos, 0, totalDepth / 2),
+      )
+    }
+
+    // Horizontal lines (along X)
+    for (let y = 0; y <= gridUnitsY; y++) {
+      const zPos = -(totalDepth / 2) + y * cellSize
+      allPoints.push(
+        new THREE.Vector3(-(totalWidth / 2), 0, zPos),
+        new THREE.Vector3(totalWidth / 2, 0, zPos),
+      )
+    }
+
+    const geom = new THREE.BufferGeometry().setFromPoints(allPoints)
+    return geom
+  }, [gridUnitsX, gridUnitsY, cellSize, totalWidth, totalDepth])
+
+  return (
+    <group position={[0, GRIDFINITY.BASE_HEIGHT + 0.05, 0]}>
+      <lineSegments geometry={geometry}>
+        <lineBasicMaterial color="#3f3f46" transparent opacity={0.6} />
+      </lineSegments>
+    </group>
+  )
+}
+
 // ─── Scene (3D content) ─────────────────────────────────────
 
 function Scene() {
@@ -529,6 +570,7 @@ function Scene() {
             magnetHoles={state.magnetHoles}
             onBackgroundClick={handleBackgroundClick}
           />
+          <GridOverlay gridUnitsX={state.gridUnitsX} gridUnitsY={state.gridUnitsY} />
           <group position={[0, GRIDFINITY.BASE_HEIGHT, 0]}>
             {state.cells.map((cell) => (
               <SelectableBin
