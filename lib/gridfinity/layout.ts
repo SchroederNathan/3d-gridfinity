@@ -6,6 +6,9 @@ export type LayoutCell = {
   spanY: number
   divisionsX?: number
   divisionsY?: number
+  stackingLip?: boolean
+  scoop?: boolean
+  labelTab?: boolean
 }
 
 export type GridDimensions = {
