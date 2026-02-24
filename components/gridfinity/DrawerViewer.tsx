@@ -38,20 +38,21 @@ type DragGhostProps = {
   gridUnitsX: number
   gridUnitsY: number
   heightUnits: number
+  cellSizeX: number
+  cellSizeY: number
   valid: boolean
 }
 
-function DragGhost({ gridX, gridY, spanX, spanY, gridUnitsX, gridUnitsY, heightUnits, valid }: DragGhostProps) {
-  const cellSize = GRIDFINITY.CELL_SIZE
-  const totalWidth = gridUnitsX * cellSize
-  const totalDepth = gridUnitsY * cellSize
-  const x = -(totalWidth / 2) + gridX * cellSize + (spanX * cellSize) / 2
-  const z = -(totalDepth / 2) + gridY * cellSize + (spanY * cellSize) / 2
+function DragGhost({ gridX, gridY, spanX, spanY, gridUnitsX, gridUnitsY, heightUnits, cellSizeX, cellSizeY, valid }: DragGhostProps) {
+  const totalWidth = gridUnitsX * cellSizeX
+  const totalDepth = gridUnitsY * cellSizeY
+  const x = -(totalWidth / 2) + gridX * cellSizeX + (spanX * cellSizeX) / 2
+  const z = -(totalDepth / 2) + gridY * cellSizeY + (spanY * cellSizeY) / 2
   const h = heightUnits * GRIDFINITY.HEIGHT_UNIT
 
   return (
     <mesh position={[x, h / 2, z]}>
-      <boxGeometry args={[spanX * cellSize - 1, h, spanY * cellSize - 1]} />
+      <boxGeometry args={[spanX * cellSizeX - 1, h, spanY * cellSizeY - 1]} />
       <meshStandardMaterial
         color={valid ? '#10b981' : '#ef4444'}
         transparent
@@ -70,6 +71,8 @@ type BinMeshProps = {
   borderRadius: number
   gridUnitsX: number
   gridUnitsY: number
+  cellSizeX: number
+  cellSizeY: number
   isSelected: boolean
   isDragging: boolean
   onSelect: () => void
@@ -82,6 +85,8 @@ function BinMesh({
   borderRadius,
   gridUnitsX,
   gridUnitsY,
+  cellSizeX,
+  cellSizeY,
   isSelected,
   isDragging,
   onSelect,
@@ -93,11 +98,11 @@ function BinMesh({
     const geom = createBinForCell(
       cell,
       { heightUnits, borderRadius },
-      { gridUnitsX, gridUnitsY }
+      { gridUnitsX, gridUnitsY, cellSizeX, cellSizeY }
     )
     geom.computeVertexNormals()
     return geom
-  }, [cell, heightUnits, borderRadius, gridUnitsX, gridUnitsY])
+  }, [cell, heightUnits, borderRadius, gridUnitsX, gridUnitsY, cellSizeX, cellSizeY])
 
   const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
@@ -138,10 +143,12 @@ type ResizeHandleProps = {
   cell: LayoutCell
   gridUnitsX: number
   gridUnitsY: number
+  cellSizeX: number
+  cellSizeY: number
   onResize: (newSpanX: number, newSpanY: number) => void
 }
 
-function ResizeHandle({ position, direction, cell, gridUnitsX, gridUnitsY, onResize }: ResizeHandleProps) {
+function ResizeHandle({ position, direction, cell, gridUnitsX, gridUnitsY, cellSizeX, cellSizeY, onResize }: ResizeHandleProps) {
   const { camera, gl } = useThree()
   const [dragging, setDragging] = useState(false)
   const [hovered, setHovered] = useState(false)
@@ -175,17 +182,16 @@ function ResizeHandle({ position, direction, cell, gridUnitsX, gridUnitsY, onRes
       if (!currentPos) return
 
       const delta = currentPos.clone().sub(startPos.current)
-      const cellSize = GRIDFINITY.CELL_SIZE
 
       let newSpanX = startSpan.current.x
       let newSpanY = startSpan.current.y
 
       if (direction === 'x' || direction === 'xy') {
-        const deltaUnitsX = Math.round(delta.x / cellSize)
+        const deltaUnitsX = Math.round(delta.x / cellSizeX)
         newSpanX = Math.max(1, startSpan.current.x + deltaUnitsX)
       }
       if (direction === 'y' || direction === 'xy') {
-        const deltaUnitsY = Math.round(delta.z / cellSize)
+        const deltaUnitsY = Math.round(delta.z / cellSizeY)
         newSpanY = Math.max(1, startSpan.current.y + deltaUnitsY)
       }
 
@@ -211,7 +217,7 @@ function ResizeHandle({ position, direction, cell, gridUnitsX, gridUnitsY, onRes
       document.removeEventListener('pointermove', onMove)
       document.removeEventListener('pointerup', onUp)
     }
-  }, [dragging, getWorldPosition, direction, cell, state.cells, gridUnitsX, gridUnitsY, onResize, gl.domElement])
+  }, [dragging, getWorldPosition, direction, cell, state.cells, gridUnitsX, gridUnitsY, cellSizeX, cellSizeY, onResize, gl.domElement])
 
   const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation()
@@ -264,6 +270,8 @@ type SelectableBinProps = {
   borderRadius: number
   gridUnitsX: number
   gridUnitsY: number
+  cellSizeX: number
+  cellSizeY: number
   isSelected: boolean
   onSelect: () => void
   onResize: (spanX: number, spanY: number) => void
@@ -276,6 +284,8 @@ function SelectableBin({
   borderRadius,
   gridUnitsX,
   gridUnitsY,
+  cellSizeX,
+  cellSizeY,
   isSelected,
   onSelect,
   onResize,
@@ -294,14 +304,13 @@ function SelectableBin({
   const didDrag = useRef(false)
   const onMoveRef = useRef(onMove)
 
-  const cellSize = GRIDFINITY.CELL_SIZE
-  const totalWidth = gridUnitsX * cellSize
-  const totalDepth = gridUnitsY * cellSize
+  const totalWidth = gridUnitsX * cellSizeX
+  const totalDepth = gridUnitsY * cellSizeY
 
-  const binCenterX = -(totalWidth / 2) + cell.gridX * cellSize + (cell.spanX * cellSize) / 2
-  const binCenterZ = -(totalDepth / 2) + cell.gridY * cellSize + (cell.spanY * cellSize) / 2
-  const binWidth = cell.spanX * cellSize
-  const binDepth = cell.spanY * cellSize
+  const binCenterX = -(totalWidth / 2) + cell.gridX * cellSizeX + (cell.spanX * cellSizeX) / 2
+  const binCenterZ = -(totalDepth / 2) + cell.gridY * cellSizeY + (cell.spanY * cellSizeY) / 2
+  const binWidth = cell.spanX * cellSizeX
+  const binDepth = cell.spanY * cellSizeY
   const binHeight = heightUnits * GRIDFINITY.HEIGHT_UNIT
 
   const getWorldPosition = useCallback((e: PointerEvent | MouseEvent): THREE.Vector3 | null => {
@@ -327,8 +336,8 @@ function SelectableBin({
       if (!currentPos) return
 
       const delta = currentPos.clone().sub(startPos.current)
-      const deltaUnitsX = Math.round(delta.x / cellSize)
-      const deltaUnitsZ = Math.round(delta.z / cellSize)
+      const deltaUnitsX = Math.round(delta.x / cellSizeX)
+      const deltaUnitsZ = Math.round(delta.z / cellSizeY)
 
       if (Math.abs(deltaUnitsX) > 0 || Math.abs(deltaUnitsZ) > 0) {
         didDrag.current = true
@@ -370,7 +379,7 @@ function SelectableBin({
       document.removeEventListener('pointermove', onPointerMove)
       document.removeEventListener('pointerup', onPointerUp)
     }
-  }, [dragging, getWorldPosition, cell, state.cells, gridUnitsX, gridUnitsY, cellSize, gl.domElement])
+  }, [dragging, getWorldPosition, cell, state.cells, gridUnitsX, gridUnitsY, cellSizeX, cellSizeY, gl.domElement])
 
   const handleDragStart = useCallback((e: ThreeEvent<PointerEvent>) => {
     setDragging(true)
@@ -394,6 +403,8 @@ function SelectableBin({
         borderRadius={borderRadius}
         gridUnitsX={gridUnitsX}
         gridUnitsY={gridUnitsY}
+        cellSizeX={cellSizeX}
+        cellSizeY={cellSizeY}
         isSelected={isSelected}
         isDragging={dragging}
         onSelect={onSelect}
@@ -409,6 +420,8 @@ function SelectableBin({
           gridUnitsX={gridUnitsX}
           gridUnitsY={gridUnitsY}
           heightUnits={heightUnits}
+          cellSizeX={cellSizeX}
+          cellSizeY={cellSizeY}
           valid={ghostPos.valid}
         />
       )}
@@ -421,6 +434,8 @@ function SelectableBin({
             cell={cell}
             gridUnitsX={gridUnitsX}
             gridUnitsY={gridUnitsY}
+            cellSizeX={cellSizeX}
+            cellSizeY={cellSizeY}
             onResize={onResize}
           />
           <ResizeHandle
@@ -429,6 +444,8 @@ function SelectableBin({
             cell={cell}
             gridUnitsX={gridUnitsX}
             gridUnitsY={gridUnitsY}
+            cellSizeX={cellSizeX}
+            cellSizeY={cellSizeY}
             onResize={onResize}
           />
           <ResizeHandle
@@ -437,6 +454,8 @@ function SelectableBin({
             cell={cell}
             gridUnitsX={gridUnitsX}
             gridUnitsY={gridUnitsY}
+            cellSizeX={cellSizeX}
+            cellSizeY={cellSizeY}
             onResize={onResize}
           />
         </>
@@ -452,6 +471,8 @@ type BaseplateMeshProps = {
   gridUnitsY: number
   borderRadius: number
   magnetHoles: boolean
+  cellSizeX: number
+  cellSizeY: number
   onBackgroundClick: () => void
 }
 
@@ -460,16 +481,18 @@ function BaseplateMesh({
   gridUnitsY,
   borderRadius,
   magnetHoles,
+  cellSizeX,
+  cellSizeY,
   onBackgroundClick,
 }: BaseplateMeshProps) {
   const geometry = useMemo(() => {
     const geom = createBaseplateForDrawer(gridUnitsX, gridUnitsY, {
       borderRadius,
       magnetHoles,
-    })
+    }, { cellSizeX, cellSizeY })
     geom.computeVertexNormals()
     return geom
-  }, [gridUnitsX, gridUnitsY, borderRadius, magnetHoles])
+  }, [gridUnitsX, gridUnitsY, borderRadius, magnetHoles, cellSizeX, cellSizeY])
 
   return (
     <mesh geometry={geometry} receiveShadow onClick={onBackgroundClick}>
@@ -478,43 +501,17 @@ function BaseplateMesh({
   )
 }
 
-// ─── Drawer Outline (physical dimensions) ───────────────────
-
-function DrawerOutline({ drawerWidthMm, drawerDepthMm }: { drawerWidthMm: number; drawerDepthMm: number }) {
-  const geometry = useMemo(() => {
-    const hw = drawerWidthMm / 2
-    const hd = drawerDepthMm / 2
-    const points = [
-      new THREE.Vector3(-hw, 0, -hd),
-      new THREE.Vector3(hw, 0, -hd),
-      new THREE.Vector3(hw, 0, hd),
-      new THREE.Vector3(-hw, 0, hd),
-    ]
-    return new THREE.BufferGeometry().setFromPoints(points)
-  }, [drawerWidthMm, drawerDepthMm])
-
-  // Use lineLoop for a closed outline (no SVG type conflict)
-  return (
-    <group position={[0, 0.1, 0]}>
-      <lineLoop geometry={geometry}>
-        <lineBasicMaterial color="#f59e0b" transparent opacity={0.6} depthTest={false} />
-      </lineLoop>
-    </group>
-  )
-}
-
 // ─── Grid Overlay ───────────────────────────────────────────
 
-function GridOverlay({ gridUnitsX, gridUnitsY }: { gridUnitsX: number; gridUnitsY: number }) {
-  const cellSize = GRIDFINITY.CELL_SIZE
-  const totalWidth = gridUnitsX * cellSize
-  const totalDepth = gridUnitsY * cellSize
+function GridOverlay({ gridUnitsX, gridUnitsY, cellSizeX, cellSizeY }: { gridUnitsX: number; gridUnitsY: number; cellSizeX: number; cellSizeY: number }) {
+  const totalWidth = gridUnitsX * cellSizeX
+  const totalDepth = gridUnitsY * cellSizeY
 
   const geometry = useMemo(() => {
     const allPoints: THREE.Vector3[] = []
 
     for (let x = 0; x <= gridUnitsX; x++) {
-      const xPos = -(totalWidth / 2) + x * cellSize
+      const xPos = -(totalWidth / 2) + x * cellSizeX
       allPoints.push(
         new THREE.Vector3(xPos, 0, -(totalDepth / 2)),
         new THREE.Vector3(xPos, 0, totalDepth / 2),
@@ -522,7 +519,7 @@ function GridOverlay({ gridUnitsX, gridUnitsY }: { gridUnitsX: number; gridUnits
     }
 
     for (let y = 0; y <= gridUnitsY; y++) {
-      const zPos = -(totalDepth / 2) + y * cellSize
+      const zPos = -(totalDepth / 2) + y * cellSizeY
       allPoints.push(
         new THREE.Vector3(-(totalWidth / 2), 0, zPos),
         new THREE.Vector3(totalWidth / 2, 0, zPos),
@@ -531,7 +528,7 @@ function GridOverlay({ gridUnitsX, gridUnitsY }: { gridUnitsX: number; gridUnits
 
     const geom = new THREE.BufferGeometry().setFromPoints(allPoints)
     return geom
-  }, [gridUnitsX, gridUnitsY, cellSize, totalWidth, totalDepth])
+  }, [gridUnitsX, gridUnitsY, cellSizeX, cellSizeY, totalWidth, totalDepth])
 
   return (
     <group position={[0, GRIDFINITY.BASE_HEIGHT + 0.5, 0]}>
@@ -545,14 +542,13 @@ function GridOverlay({ gridUnitsX, gridUnitsY }: { gridUnitsX: number; gridUnits
 // ─── Scene (3D content) ─────────────────────────────────────
 
 function Scene() {
-  const { state, actions } = useDrawer()
+  const { state, actions, meta } = useDrawer()
   const orbitRef = useRef<any>(null)
+  const { cellSizeX, cellSizeY } = meta
 
   const maxDim = Math.max(
     state.drawerWidthMm,
     state.drawerDepthMm,
-    state.gridUnitsX * GRIDFINITY.CELL_SIZE,
-    state.gridUnitsY * GRIDFINITY.CELL_SIZE,
     state.heightUnits * GRIDFINITY.HEIGHT_UNIT
   )
   const cameraDistance = maxDim * 2.5
@@ -601,10 +597,11 @@ function Scene() {
             gridUnitsY={state.gridUnitsY}
             borderRadius={state.borderRadius}
             magnetHoles={state.magnetHoles}
+            cellSizeX={cellSizeX}
+            cellSizeY={cellSizeY}
             onBackgroundClick={handleBackgroundClick}
           />
-          <DrawerOutline drawerWidthMm={state.drawerWidthMm} drawerDepthMm={state.drawerDepthMm} />
-          <GridOverlay gridUnitsX={state.gridUnitsX} gridUnitsY={state.gridUnitsY} />
+          <GridOverlay gridUnitsX={state.gridUnitsX} gridUnitsY={state.gridUnitsY} cellSizeX={cellSizeX} cellSizeY={cellSizeY} />
           <group position={[0, GRIDFINITY.BASE_HEIGHT, 0]}>
             {state.cells.map((cell) => (
               <SelectableBin
@@ -614,6 +611,8 @@ function Scene() {
                 borderRadius={state.borderRadius}
                 gridUnitsX={state.gridUnitsX}
                 gridUnitsY={state.gridUnitsY}
+                cellSizeX={cellSizeX}
+                cellSizeY={cellSizeY}
                 isSelected={cell.id === state.selectedCellId}
                 onSelect={() => actions.selectCell(cell.id)}
                 onResize={(spanX, spanY) => handleResize(cell.id, spanX, spanY)}
@@ -714,14 +713,12 @@ function ToggleSwitch({ checked, onChange, label }: { checked: boolean; onChange
 function HudToolbar() {
   const { state, actions, meta } = useDrawer()
   const [isExporting, setIsExporting] = useState(false)
+  const { cellSizeX, cellSizeY } = meta
 
   const canAddCell =
     state.gridUnitsX > 0 &&
     state.gridUnitsY > 0 &&
     state.cells.length < state.gridUnitsX * state.gridUnitsY
-
-  const maxGridX = Math.min(LIMITS.GRID_MAX, Math.floor(state.drawerWidthMm / GRIDFINITY.CELL_SIZE))
-  const maxGridY = Math.min(LIMITS.GRID_MAX, Math.floor(state.drawerDepthMm / GRIDFINITY.CELL_SIZE))
 
   const exportBaseplate = useCallback(() => {
     setIsExporting(true)
@@ -729,14 +726,14 @@ function HudToolbar() {
       const geometry = createBaseplateForDrawer(state.gridUnitsX, state.gridUnitsY, {
         borderRadius: state.borderRadius,
         magnetHoles: state.magnetHoles,
-      })
+      }, { cellSizeX, cellSizeY })
       const blob = generateSTLBlob(geometry)
       const filename = generateDrawerBaseplateFilename(state.gridUnitsX, state.gridUnitsY)
       downloadBlob(blob, filename)
     } finally {
       setIsExporting(false)
     }
-  }, [state.gridUnitsX, state.gridUnitsY, state.borderRadius, state.magnetHoles])
+  }, [state.gridUnitsX, state.gridUnitsY, state.borderRadius, state.magnetHoles, cellSizeX, cellSizeY])
 
   const exportBins = useCallback(() => {
     if (state.cells.length === 0) return
@@ -746,7 +743,7 @@ function HudToolbar() {
         createBinForCell(
           cell,
           { heightUnits: state.heightUnits, borderRadius: state.borderRadius },
-          { gridUnitsX: state.gridUnitsX, gridUnitsY: state.gridUnitsY }
+          { gridUnitsX: state.gridUnitsX, gridUnitsY: state.gridUnitsY, cellSizeX, cellSizeY }
         )
       )
       const merged = mergeGeometriesForExport(geometries)
@@ -758,7 +755,7 @@ function HudToolbar() {
     } finally {
       setIsExporting(false)
     }
-  }, [state.cells, state.heightUnits, state.borderRadius, state.gridUnitsX, state.gridUnitsY])
+  }, [state.cells, state.heightUnits, state.borderRadius, state.gridUnitsX, state.gridUnitsY, cellSizeX, cellSizeY])
 
   return (
     <nav
@@ -775,16 +772,16 @@ function HudToolbar() {
               <input
                 type="number"
                 value={state.drawerWidthMm}
-                min={GRIDFINITY.CELL_SIZE}
+                min={1}
                 onChange={(e) => actions.setDrawerSize(Number(e.target.value), state.drawerDepthMm)}
                 aria-label="Drawer width (mm)"
                 className="w-14 h-7 px-1.5 bg-zinc-800 border border-zinc-700 rounded-md text-sm text-zinc-200 text-center tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
               />
-              <span className="text-xs text-zinc-500">×</span>
+              <span className="text-xs text-zinc-500">&times;</span>
               <input
                 type="number"
                 value={state.drawerDepthMm}
-                min={GRIDFINITY.CELL_SIZE}
+                min={1}
                 onChange={(e) => actions.setDrawerSize(state.drawerWidthMm, Number(e.target.value))}
                 aria-label="Drawer depth (mm)"
                 className="w-14 h-7 px-1.5 bg-zinc-800 border border-zinc-700 rounded-md text-sm text-zinc-200 text-center tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
@@ -805,21 +802,21 @@ function HudToolbar() {
                 onDecrement={() => actions.setGridUnits(state.gridUnitsX - 1, state.gridUnitsY)}
                 onIncrement={() => actions.setGridUnits(state.gridUnitsX + 1, state.gridUnitsY)}
                 disableDecrement={state.gridUnitsX <= LIMITS.GRID_MIN}
-                disableIncrement={state.gridUnitsX >= maxGridX}
+                disableIncrement={state.gridUnitsX >= LIMITS.GRID_MAX}
                 title="Grid X"
               />
-              <span className="text-xs text-zinc-500">×</span>
+              <span className="text-xs text-zinc-500">&times;</span>
               <Stepper
                 value={state.gridUnitsY}
                 onDecrement={() => actions.setGridUnits(state.gridUnitsX, state.gridUnitsY - 1)}
                 onIncrement={() => actions.setGridUnits(state.gridUnitsX, state.gridUnitsY + 1)}
                 disableDecrement={state.gridUnitsY <= LIMITS.GRID_MIN}
-                disableIncrement={state.gridUnitsY >= maxGridY}
+                disableIncrement={state.gridUnitsY >= LIMITS.GRID_MAX}
                 title="Grid Y"
               />
             </div>
           </TooltipTrigger>
-          <TooltipContent>Grid Size</TooltipContent>
+          <TooltipContent>Grid Size ({Math.round(cellSizeX * 10) / 10} &times; {Math.round(cellSizeY * 10) / 10}mm cells)</TooltipContent>
         </Tooltip>
 
         {/* 3. Height */}
@@ -955,13 +952,11 @@ function HudOverlay() {
 // ─── Exported DrawerViewer ──────────────────────────────────
 
 export function DrawerViewer() {
-  const { state } = useDrawer()
+  const { state, meta } = useDrawer()
 
   const maxDim = Math.max(
     state.drawerWidthMm || 100,
     state.drawerDepthMm || 100,
-    state.gridUnitsX * GRIDFINITY.CELL_SIZE || 100,
-    state.gridUnitsY * GRIDFINITY.CELL_SIZE || 100,
     state.heightUnits * GRIDFINITY.HEIGHT_UNIT
   )
   const cameraDistance = maxDim * 2

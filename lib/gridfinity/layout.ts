@@ -1,5 +1,3 @@
-import { GRIDFINITY } from './constants'
-
 export type LayoutCell = {
   id: string
   gridX: number
@@ -18,13 +16,6 @@ export type EmptyRect = {
   y: number
   spanX: number
   spanY: number
-}
-
-export function calculateGrid(widthMm: number, depthMm: number): GridDimensions {
-  return {
-    gridX: Math.floor(widthMm / GRIDFINITY.CELL_SIZE),
-    gridY: Math.floor(depthMm / GRIDFINITY.CELL_SIZE),
-  }
 }
 
 export function getOccupiedPositions(cells: LayoutCell[]): Set<string> {

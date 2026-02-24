@@ -1,42 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
-  calculateGrid,
   canPlaceCell,
   findLargestEmpty,
   canResize,
   getOccupiedPositions,
   type LayoutCell,
 } from './layout'
-import { GRIDFINITY } from './constants'
-
-describe('calculateGrid', () => {
-  it('calculates grid units from drawer dimensions', () => {
-    const result = calculateGrid(210, 168)
-    expect(result).toEqual({ gridX: 5, gridY: 4 })
-  })
-
-  it('floors partial units', () => {
-    const result = calculateGrid(100, 100)
-    // 100 / 42 = 2.38 → floors to 2
-    expect(result).toEqual({ gridX: 2, gridY: 2 })
-  })
-
-  it('handles exact multiples', () => {
-    const result = calculateGrid(84, 126)
-    // 84 / 42 = 2, 126 / 42 = 3
-    expect(result).toEqual({ gridX: 2, gridY: 3 })
-  })
-
-  it('returns zero for dimensions smaller than one cell', () => {
-    const result = calculateGrid(30, 41)
-    expect(result).toEqual({ gridX: 0, gridY: 0 })
-  })
-
-  it('uses GRIDFINITY.CELL_SIZE constant', () => {
-    const result = calculateGrid(GRIDFINITY.CELL_SIZE * 3, GRIDFINITY.CELL_SIZE * 2)
-    expect(result).toEqual({ gridX: 3, gridY: 2 })
-  })
-})
 
 describe('getOccupiedPositions', () => {
   it('returns empty set for no cells', () => {

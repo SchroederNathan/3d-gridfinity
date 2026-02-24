@@ -8,9 +8,8 @@ import {
   useMemo,
   type ReactNode,
 } from 'react'
-import { GRIDFINITY, LIMITS } from '@/lib/gridfinity/constants'
+import { LIMITS } from '@/lib/gridfinity/constants'
 import {
-  calculateGrid,
   canPlaceCell,
   canResize,
   findLargestEmpty,
@@ -46,7 +45,8 @@ type DrawerActions = {
 type DrawerMeta = {
   isExporting: boolean
   selectedCell: LayoutCell | null
-  wastedSpaceMm: number
+  cellSizeX: number
+  cellSizeY: number
 }
 
 type DrawerContextValue = {
@@ -88,37 +88,27 @@ function generateCellId(): string {
 }
 
 export function DrawerProvider({ children, initialState }: DrawerProviderProps) {
-  const [state, setState] = useState<DrawerLayoutState>(() => {
-    const initial = { ...DEFAULT_DRAWER_STATE, ...initialState }
-    const grid = calculateGrid(initial.drawerWidthMm, initial.drawerDepthMm)
-    return {
-      ...initial,
-      gridUnitsX: grid.gridX,
-      gridUnitsY: grid.gridY,
-    }
-  })
+  const [state, setState] = useState<DrawerLayoutState>(() => ({
+    ...DEFAULT_DRAWER_STATE,
+    ...initialState,
+  }))
   const [isExporting, setIsExporting] = useState(false)
 
   const clamp = (value: number, min: number, max: number) =>
     Math.max(min, Math.min(max, value))
 
   const setDrawerSize = useCallback((widthMm: number, depthMm: number) => {
-    const maxGrid = calculateGrid(widthMm, depthMm)
     setState((prev) => {
-      // Auto-grow grid to fill new drawer, auto-shrink if drawer got smaller
-      const newGridX = Math.max(LIMITS.GRID_MIN, Math.min(LIMITS.GRID_MAX, maxGrid.gridX))
-      const newGridY = Math.max(LIMITS.GRID_MIN, Math.min(LIMITS.GRID_MAX, maxGrid.gridY))
+      // Keep current grid units — cell sizes adjust automatically
       const validCells = prev.cells.filter(
         (cell) =>
-          cell.gridX + cell.spanX <= newGridX &&
-          cell.gridY + cell.spanY <= newGridY
+          cell.gridX + cell.spanX <= prev.gridUnitsX &&
+          cell.gridY + cell.spanY <= prev.gridUnitsY
       )
       return {
         ...prev,
-        drawerWidthMm: widthMm,
-        drawerDepthMm: depthMm,
-        gridUnitsX: newGridX,
-        gridUnitsY: newGridY,
+        drawerWidthMm: Math.max(1, widthMm),
+        drawerDepthMm: Math.max(1, depthMm),
         cells: validCells,
         selectedCellId: validCells.find((c) => c.id === prev.selectedCellId)
           ? prev.selectedCellId
@@ -129,11 +119,9 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
 
   const setGridUnits = useCallback((gridX: number, gridY: number) => {
     setState((prev) => {
-      // Cap grid units at what fits in the drawer
-      const maxGridX = Math.floor(prev.drawerWidthMm / GRIDFINITY.CELL_SIZE)
-      const maxGridY = Math.floor(prev.drawerDepthMm / GRIDFINITY.CELL_SIZE)
-      const clampedX = Math.max(LIMITS.GRID_MIN, Math.min(Math.min(LIMITS.GRID_MAX, maxGridX), gridX))
-      const clampedY = Math.max(LIMITS.GRID_MIN, Math.min(Math.min(LIMITS.GRID_MAX, maxGridY), gridY))
+      // Only clamp to LIMITS — no drawer-size-based cap (cells stretch to fit)
+      const clampedX = clamp(gridX, LIMITS.GRID_MIN, LIMITS.GRID_MAX)
+      const clampedY = clamp(gridY, LIMITS.GRID_MIN, LIMITS.GRID_MAX)
       const validCells = prev.cells.filter(
         (cell) =>
           cell.gridX + cell.spanX <= clampedX &&
@@ -262,12 +250,8 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
     [state.cells, state.selectedCellId]
   )
 
-  const wastedSpaceMm = useMemo(() => {
-    const totalDrawerArea = state.drawerWidthMm * state.drawerDepthMm
-    const usableGridArea =
-      state.gridUnitsX * state.gridUnitsY * GRIDFINITY.CELL_SIZE * GRIDFINITY.CELL_SIZE
-    return totalDrawerArea - usableGridArea
-  }, [state.drawerWidthMm, state.drawerDepthMm, state.gridUnitsX, state.gridUnitsY])
+  const cellSizeX = state.drawerWidthMm / state.gridUnitsX
+  const cellSizeY = state.drawerDepthMm / state.gridUnitsY
 
   const actions = useMemo<DrawerActions>(
     () => ({
@@ -302,9 +286,10 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
     () => ({
       isExporting,
       selectedCell,
-      wastedSpaceMm,
+      cellSizeX,
+      cellSizeY,
     }),
-    [isExporting, selectedCell, wastedSpaceMm]
+    [isExporting, selectedCell, cellSizeX, cellSizeY]
   )
 
   const value = useMemo<DrawerContextValue>(

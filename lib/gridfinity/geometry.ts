@@ -8,10 +8,17 @@ export type Dimensions = {
   height: number
 }
 
-export function calculateDimensions(config: GridfinityConfig): Dimensions {
+export type CellSizes = {
+  cellSizeX: number
+  cellSizeY: number
+}
+
+export function calculateDimensions(config: GridfinityConfig, cellSizes?: CellSizes): Dimensions {
+  const csX = cellSizes?.cellSizeX ?? GRIDFINITY.CELL_SIZE
+  const csY = cellSizes?.cellSizeY ?? GRIDFINITY.CELL_SIZE
   return {
-    width: config.gridX * GRIDFINITY.CELL_SIZE,
-    depth: config.gridY * GRIDFINITY.CELL_SIZE,
+    width: config.gridX * csX,
+    depth: config.gridY * csY,
     height: config.heightUnits * GRIDFINITY.HEIGHT_UNIT,
   }
 }
@@ -41,14 +48,16 @@ function createRoundedRectShape(
 
 function addMagnetHoles(
   geometry: THREE.BufferGeometry,
-  config: GridfinityConfig
+  config: GridfinityConfig,
+  cellSizes?: CellSizes
 ): THREE.BufferGeometry {
   if (!config.magnetHoles) return geometry
 
-  const dims = calculateDimensions(config)
+  const csX = cellSizes?.cellSizeX ?? GRIDFINITY.CELL_SIZE
+  const csY = cellSizes?.cellSizeY ?? GRIDFINITY.CELL_SIZE
+  const dims = calculateDimensions(config, cellSizes)
   const holeRadius = GRIDFINITY.MAGNET_HOLE_DIAMETER / 2
   const holeDepth = GRIDFINITY.MAGNET_HOLE_DEPTH
-  const inset = GRIDFINITY.CELL_SIZE / 2 - 4
 
   const holes: THREE.BufferGeometry[] = []
   const cylinderGeom = new THREE.CylinderGeometry(holeRadius, holeRadius, holeDepth, 16)
@@ -57,14 +66,17 @@ function addMagnetHoles(
 
   for (let x = 0; x < config.gridX; x++) {
     for (let y = 0; y < config.gridY; y++) {
-      const cellCenterX = -dims.width / 2 + GRIDFINITY.CELL_SIZE / 2 + x * GRIDFINITY.CELL_SIZE
-      const cellCenterZ = -dims.depth / 2 + GRIDFINITY.CELL_SIZE / 2 + y * GRIDFINITY.CELL_SIZE
+      const cellCenterX = -dims.width / 2 + csX / 2 + x * csX
+      const cellCenterZ = -dims.depth / 2 + csY / 2 + y * csY
+      // Inset from cell edge: use smaller of the two cell sizes for consistent inset
+      const insetX = csX / 2 - 4
+      const insetY = csY / 2 - 4
 
       const corners = [
-        [cellCenterX - inset, cellCenterZ - inset],
-        [cellCenterX + inset, cellCenterZ - inset],
-        [cellCenterX - inset, cellCenterZ + inset],
-        [cellCenterX + inset, cellCenterZ + inset],
+        [cellCenterX - insetX, cellCenterZ - insetY],
+        [cellCenterX + insetX, cellCenterZ - insetY],
+        [cellCenterX - insetX, cellCenterZ + insetY],
+        [cellCenterX + insetX, cellCenterZ + insetY],
       ]
 
       for (const [cx, cz] of corners) {
@@ -78,8 +90,8 @@ function addMagnetHoles(
   return geometry
 }
 
-export function createBaseplateGeometry(config: GridfinityConfig): THREE.BufferGeometry {
-  const dims = calculateDimensions(config)
+export function createBaseplateGeometry(config: GridfinityConfig, cellSizes?: CellSizes): THREE.BufferGeometry {
+  const dims = calculateDimensions(config, cellSizes)
   const height = GRIDFINITY.BASE_HEIGHT
 
   const outerShape = createRoundedRectShape(dims.width, dims.depth, config.borderRadius)
@@ -95,11 +107,11 @@ export function createBaseplateGeometry(config: GridfinityConfig): THREE.BufferG
   const geometry = new THREE.ExtrudeGeometry(outerShape, extrudeSettings)
   geometry.rotateX(-Math.PI / 2)
 
-  return addMagnetHoles(geometry, config)
+  return addMagnetHoles(geometry, config, cellSizes)
 }
 
-export function createBinGeometry(config: GridfinityConfig): THREE.BufferGeometry {
-  const dims = calculateDimensions(config)
+export function createBinGeometry(config: GridfinityConfig, cellSizes?: CellSizes): THREE.BufferGeometry {
+  const dims = calculateDimensions(config, cellSizes)
   const wallThickness = GRIDFINITY.WALL_THICKNESS
   const baseHeight = GRIDFINITY.BASE_HEIGHT
   const totalHeight = dims.height
@@ -222,7 +234,8 @@ export type DrawerBaseplateConfig = {
 export function createBaseplateForDrawer(
   gridUnitsX: number,
   gridUnitsY: number,
-  config: DrawerBaseplateConfig
+  config: DrawerBaseplateConfig,
+  cellSizes?: CellSizes
 ): THREE.BufferGeometry {
   const internalConfig: GridfinityConfig = {
     gridX: gridUnitsX,
@@ -232,7 +245,7 @@ export function createBaseplateForDrawer(
     modelType: 'baseplate',
     magnetHoles: config.magnetHoles,
   }
-  return createBaseplateGeometry(internalConfig)
+  return createBaseplateGeometry(internalConfig, cellSizes)
 }
 
 type LayoutCell = {
@@ -251,6 +264,8 @@ export type BinCellConfig = {
 export type GridContext = {
   gridUnitsX: number
   gridUnitsY: number
+  cellSizeX?: number
+  cellSizeY?: number
 }
 
 export function createBinForCell(
@@ -258,6 +273,9 @@ export function createBinForCell(
   config: BinCellConfig,
   gridContext?: GridContext
 ): THREE.BufferGeometry {
+  const csX = gridContext?.cellSizeX ?? GRIDFINITY.CELL_SIZE
+  const csY = gridContext?.cellSizeY ?? GRIDFINITY.CELL_SIZE
+
   const binConfig: GridfinityConfig = {
     gridX: cell.spanX,
     gridY: cell.spanY,
@@ -267,20 +285,21 @@ export function createBinForCell(
     magnetHoles: false,
   }
 
-  const geometry = createBinGeometry(binConfig)
+  const binCellSizes: CellSizes = { cellSizeX: csX, cellSizeY: csY }
+  const geometry = createBinGeometry(binConfig, binCellSizes)
 
   if (gridContext) {
-    const totalWidth = gridContext.gridUnitsX * GRIDFINITY.CELL_SIZE
-    const totalDepth = gridContext.gridUnitsY * GRIDFINITY.CELL_SIZE
+    const totalWidth = gridContext.gridUnitsX * csX
+    const totalDepth = gridContext.gridUnitsY * csY
 
     const cellCenterX =
       -(totalWidth / 2) +
-      cell.gridX * GRIDFINITY.CELL_SIZE +
-      (cell.spanX * GRIDFINITY.CELL_SIZE) / 2
+      cell.gridX * csX +
+      (cell.spanX * csX) / 2
     const cellCenterZ =
       -(totalDepth / 2) +
-      cell.gridY * GRIDFINITY.CELL_SIZE +
-      (cell.spanY * GRIDFINITY.CELL_SIZE) / 2
+      cell.gridY * csY +
+      (cell.spanY * csY) / 2
 
     geometry.translate(cellCenterX, 0, cellCenterZ)
   }
