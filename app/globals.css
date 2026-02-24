@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "tw-animate-css";
+/* tw-animate-css removed — not needed and incompatible with Turbopack */
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
