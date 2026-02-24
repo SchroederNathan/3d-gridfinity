@@ -5,8 +5,6 @@ export const GRIDFINITY = {
   WALL_THICKNESS: 1.2,
   FILLET_BOTTOM: 0.8,
   FILLET_TOP: 1.6,
-  MAGNET_HOLE_DIAMETER: 6.5,
-  MAGNET_HOLE_DEPTH: 2.4,
   TOLERANCE: 0.5,
 } as const
 
@@ -25,7 +23,6 @@ export type GridfinityConfig = {
   heightUnits: number
   borderRadius: number
   modelType: 'baseplate' | 'bin'
-  magnetHoles: boolean
 }
 
 export const DEFAULT_CONFIG: GridfinityConfig = {
@@ -34,5 +31,4 @@ export const DEFAULT_CONFIG: GridfinityConfig = {
   heightUnits: 3,
   borderRadius: 0.8,
   modelType: 'bin',
-  magnetHoles: false,
 }

@@ -25,7 +25,6 @@ type DrawerLayoutState = {
   gridUnitsY: number
   heightUnits: number
   borderRadius: number
-  magnetHoles: boolean
   cells: LayoutCell[]
   selectedCellId: string | null
 }
@@ -35,7 +34,6 @@ type DrawerActions = {
   setGridUnits: (gridX: number, gridY: number) => void
   setHeightUnits: (h: number) => void
   setBorderRadius: (r: number) => void
-  setMagnetHoles: (enabled: boolean) => void
   addCell: () => LayoutCell | null
   resizeCell: (cellId: string, spanX: number, spanY: number) => boolean
   moveCell: (cellId: string, gridX: number, gridY: number) => boolean
@@ -80,7 +78,6 @@ const DEFAULT_DRAWER_STATE: DrawerLayoutState = {
   gridUnitsY: 4,
   heightUnits: 3,
   borderRadius: 0.8,
-  magnetHoles: false,
   cells: [],
   selectedCellId: null,
 }
@@ -106,7 +103,6 @@ function statesEqual(a: DrawerLayoutState, b: DrawerLayoutState): boolean {
     a.gridUnitsY === b.gridUnitsY &&
     a.heightUnits === b.heightUnits &&
     a.borderRadius === b.borderRadius &&
-    a.magnetHoles === b.magnetHoles &&
     a.cells === b.cells
   )
 }
@@ -246,10 +242,6 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
     }))
   }, [setState])
 
-  const setMagnetHoles = useCallback((enabled: boolean) => {
-    setState((prev) => ({ ...prev, magnetHoles: enabled }))
-  }, [setState])
-
   const addCell = useCallback((): LayoutCell | null => {
     let newCell: LayoutCell | null = null
     setState((prev) => {
@@ -375,7 +367,6 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
       setGridUnits,
       setHeightUnits,
       setBorderRadius,
-      setMagnetHoles,
       addCell,
       resizeCell,
       moveCell,
@@ -392,7 +383,6 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
       setGridUnits,
       setHeightUnits,
       setBorderRadius,
-      setMagnetHoles,
       addCell,
       resizeCell,
       moveCell,

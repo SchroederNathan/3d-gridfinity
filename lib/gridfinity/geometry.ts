@@ -46,50 +46,6 @@ function createRoundedRectShape(
   return shape
 }
 
-function addMagnetHoles(
-  geometry: THREE.BufferGeometry,
-  config: GridfinityConfig,
-  cellSizes?: CellSizes
-): THREE.BufferGeometry {
-  if (!config.magnetHoles) return geometry
-
-  const csX = cellSizes?.cellSizeX ?? GRIDFINITY.CELL_SIZE
-  const csY = cellSizes?.cellSizeY ?? GRIDFINITY.CELL_SIZE
-  const dims = calculateDimensions(config, cellSizes)
-  const holeRadius = GRIDFINITY.MAGNET_HOLE_DIAMETER / 2
-  const holeDepth = GRIDFINITY.MAGNET_HOLE_DEPTH
-
-  const holes: THREE.BufferGeometry[] = []
-  const cylinderGeom = new THREE.CylinderGeometry(holeRadius, holeRadius, holeDepth, 16)
-  cylinderGeom.rotateX(Math.PI / 2)
-  cylinderGeom.translate(0, 0, -holeDepth / 2)
-
-  for (let x = 0; x < config.gridX; x++) {
-    for (let y = 0; y < config.gridY; y++) {
-      const cellCenterX = -dims.width / 2 + csX / 2 + x * csX
-      const cellCenterZ = -dims.depth / 2 + csY / 2 + y * csY
-      // Inset from cell edge: use smaller of the two cell sizes for consistent inset
-      const insetX = csX / 2 - 4
-      const insetY = csY / 2 - 4
-
-      const corners = [
-        [cellCenterX - insetX, cellCenterZ - insetY],
-        [cellCenterX + insetX, cellCenterZ - insetY],
-        [cellCenterX - insetX, cellCenterZ + insetY],
-        [cellCenterX + insetX, cellCenterZ + insetY],
-      ]
-
-      for (const [cx, cz] of corners) {
-        const hole = cylinderGeom.clone()
-        hole.translate(cx, 0, cz)
-        holes.push(hole)
-      }
-    }
-  }
-
-  return geometry
-}
-
 export function createBaseplateGeometry(config: GridfinityConfig, cellSizes?: CellSizes): THREE.BufferGeometry {
   const dims = calculateDimensions(config, cellSizes)
   const csX = cellSizes?.cellSizeX ?? GRIDFINITY.CELL_SIZE
@@ -277,7 +233,6 @@ export function createGridfinityGeometry(config: GridfinityConfig): THREE.Buffer
 
 export type DrawerBaseplateConfig = {
   borderRadius: number
-  magnetHoles: boolean
 }
 
 export function createBaseplateForDrawer(
@@ -292,7 +247,6 @@ export function createBaseplateForDrawer(
     heightUnits: 1,
     borderRadius: config.borderRadius,
     modelType: 'baseplate',
-    magnetHoles: config.magnetHoles,
   }
   return createBaseplateGeometry(internalConfig, cellSizes)
 }
@@ -415,7 +369,6 @@ export function createBinForCell(
     heightUnits: config.heightUnits,
     borderRadius: config.borderRadius,
     modelType: 'bin',
-    magnetHoles: false,
   }
 
   const binCellSizes: CellSizes = { cellSizeX: csX, cellSizeY: csY }

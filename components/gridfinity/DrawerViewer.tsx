@@ -8,7 +8,6 @@ import {
   Minus,
   Download,
   Grid3x3,
-  Magnet,
   Trash2,
   Layers,
   Ruler,
@@ -475,7 +474,6 @@ type BaseplateMeshProps = {
   gridUnitsX: number
   gridUnitsY: number
   borderRadius: number
-  magnetHoles: boolean
   cellSizeX: number
   cellSizeY: number
   onBackgroundClick: () => void
@@ -485,7 +483,6 @@ function BaseplateMesh({
   gridUnitsX,
   gridUnitsY,
   borderRadius,
-  magnetHoles,
   cellSizeX,
   cellSizeY,
   onBackgroundClick,
@@ -493,11 +490,10 @@ function BaseplateMesh({
   const geometry = useMemo(() => {
     const geom = createBaseplateForDrawer(gridUnitsX, gridUnitsY, {
       borderRadius,
-      magnetHoles,
     }, { cellSizeX, cellSizeY })
     geom.computeVertexNormals()
     return geom
-  }, [gridUnitsX, gridUnitsY, borderRadius, magnetHoles, cellSizeX, cellSizeY])
+  }, [gridUnitsX, gridUnitsY, borderRadius, cellSizeX, cellSizeY])
 
   return (
     <mesh geometry={geometry} receiveShadow onClick={onBackgroundClick}>
@@ -601,7 +597,6 @@ function Scene() {
             gridUnitsX={state.gridUnitsX}
             gridUnitsY={state.gridUnitsY}
             borderRadius={state.borderRadius}
-            magnetHoles={state.magnetHoles}
             cellSizeX={cellSizeX}
             cellSizeY={cellSizeY}
             onBackgroundClick={handleBackgroundClick}
@@ -691,28 +686,6 @@ function Stepper({ value, onDecrement, onIncrement, disableDecrement, disableInc
 
 // ─── Toggle Switch ──────────────────────────────────────────
 
-function ToggleSwitch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={() => onChange(!checked)}
-      className={`
-        relative h-6 w-10 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50
-        ${checked ? 'bg-emerald-600' : 'bg-zinc-700'}
-      `}
-    >
-      <span
-        className={`
-          absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm
-          transition-transform ${checked ? 'translate-x-4' : 'translate-x-0'}
-        `}
-      />
-    </button>
-  )
-}
-
 // ─── HUD Bottom Toolbar ─────────────────────────────────────
 
 // ─── Drawer Size Presets ─────────────────────────────────
@@ -742,7 +715,6 @@ function HudToolbar() {
     try {
       const geometry = createBaseplateForDrawer(state.gridUnitsX, state.gridUnitsY, {
         borderRadius: state.borderRadius,
-        magnetHoles: state.magnetHoles,
       }, { cellSizeX, cellSizeY })
       const blob = generateSTLBlob(geometry)
       const filename = generateDrawerBaseplateFilename(state.gridUnitsX, state.gridUnitsY)
@@ -750,7 +722,7 @@ function HudToolbar() {
     } finally {
       setIsExporting(false)
     }
-  }, [state.gridUnitsX, state.gridUnitsY, state.borderRadius, state.magnetHoles, cellSizeX, cellSizeY])
+  }, [state.gridUnitsX, state.gridUnitsY, state.borderRadius, cellSizeX, cellSizeY])
 
   const exportBins = useCallback(() => {
     if (state.cells.length === 0) return
@@ -942,21 +914,6 @@ function HudToolbar() {
             </div>
           </TooltipTrigger>
           <TooltipContent>Corner Radius</TooltipContent>
-        </Tooltip>
-
-        {/* 5. Magnet Holes */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
-              <Magnet className="w-4 h-4 text-zinc-400 shrink-0" aria-hidden="true" />
-              <ToggleSwitch
-                checked={state.magnetHoles}
-                onChange={actions.setMagnetHoles}
-                label="Magnet Holes"
-              />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>Magnet Holes</TooltipContent>
         </Tooltip>
 
         {/* 6. Add / Delete Cell */}
