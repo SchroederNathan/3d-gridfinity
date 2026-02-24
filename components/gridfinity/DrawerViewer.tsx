@@ -14,6 +14,7 @@ import {
   RulerDimensionLine,
   SquareRoundCorner,
 } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useDrawer } from './DrawerContext'
 import { createBaseplateForDrawer, createBinForCell } from '@/lib/gridfinity/geometry'
 import { canResize, canPlaceCell } from '@/lib/gridfinity/layout'
@@ -739,129 +740,174 @@ function HudToolbar() {
     >
       <div className="flex flex-wrap items-center justify-center gap-2 py-2 px-3 bg-zinc-900/90 backdrop-blur-md border border-zinc-700/50 rounded-xl max-w-full">
         {/* 1. Drawer Dimensions */}
-        <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
-          <Ruler className="w-4 h-4 text-zinc-400 shrink-0" aria-hidden="true" />
-          <input
-            type="number"
-            value={state.drawerWidthMm}
-            min={GRIDFINITY.CELL_SIZE}
-            onChange={(e) => actions.setDrawerSize(Number(e.target.value), state.drawerDepthMm)}
-            aria-label="Drawer width (mm)"
-            className="w-14 h-7 px-1.5 bg-zinc-800 border border-zinc-700 rounded-md text-sm text-zinc-200 text-center tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
-          />
-          <span className="text-xs text-zinc-500">×</span>
-          <input
-            type="number"
-            value={state.drawerDepthMm}
-            min={GRIDFINITY.CELL_SIZE}
-            onChange={(e) => actions.setDrawerSize(state.drawerWidthMm, Number(e.target.value))}
-            aria-label="Drawer depth (mm)"
-            className="w-14 h-7 px-1.5 bg-zinc-800 border border-zinc-700 rounded-md text-sm text-zinc-200 text-center tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
-          />
-          <span className="text-xs text-zinc-400">mm</span>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
+              <Ruler className="w-4 h-4 text-zinc-400 shrink-0" aria-hidden="true" />
+              <input
+                type="number"
+                value={state.drawerWidthMm}
+                min={GRIDFINITY.CELL_SIZE}
+                onChange={(e) => actions.setDrawerSize(Number(e.target.value), state.drawerDepthMm)}
+                aria-label="Drawer width (mm)"
+                className="w-14 h-7 px-1.5 bg-zinc-800 border border-zinc-700 rounded-md text-sm text-zinc-200 text-center tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+              />
+              <span className="text-xs text-zinc-500">×</span>
+              <input
+                type="number"
+                value={state.drawerDepthMm}
+                min={GRIDFINITY.CELL_SIZE}
+                onChange={(e) => actions.setDrawerSize(state.drawerWidthMm, Number(e.target.value))}
+                aria-label="Drawer depth (mm)"
+                className="w-14 h-7 px-1.5 bg-zinc-800 border border-zinc-700 rounded-md text-sm text-zinc-200 text-center tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+              />
+              <span className="text-xs text-zinc-400">mm</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>Drawer Dimensions</TooltipContent>
+        </Tooltip>
 
         {/* 2. Grid */}
-        <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
-          <Grid3x3 className="w-4 h-4 text-zinc-400 shrink-0" aria-hidden="true" />
-          <Stepper
-            value={state.gridUnitsX}
-            onDecrement={() => actions.setGridUnits(state.gridUnitsX - 1, state.gridUnitsY)}
-            onIncrement={() => actions.setGridUnits(state.gridUnitsX + 1, state.gridUnitsY)}
-            disableDecrement={state.gridUnitsX <= LIMITS.GRID_MIN}
-            disableIncrement={state.gridUnitsX >= maxGridX}
-            title="Grid X"
-          />
-          <span className="text-xs text-zinc-500">×</span>
-          <Stepper
-            value={state.gridUnitsY}
-            onDecrement={() => actions.setGridUnits(state.gridUnitsX, state.gridUnitsY - 1)}
-            onIncrement={() => actions.setGridUnits(state.gridUnitsX, state.gridUnitsY + 1)}
-            disableDecrement={state.gridUnitsY <= LIMITS.GRID_MIN}
-            disableIncrement={state.gridUnitsY >= maxGridY}
-            title="Grid Y"
-          />
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
+              <Grid3x3 className="w-4 h-4 text-zinc-400 shrink-0" aria-hidden="true" />
+              <Stepper
+                value={state.gridUnitsX}
+                onDecrement={() => actions.setGridUnits(state.gridUnitsX - 1, state.gridUnitsY)}
+                onIncrement={() => actions.setGridUnits(state.gridUnitsX + 1, state.gridUnitsY)}
+                disableDecrement={state.gridUnitsX <= LIMITS.GRID_MIN}
+                disableIncrement={state.gridUnitsX >= maxGridX}
+                title="Grid X"
+              />
+              <span className="text-xs text-zinc-500">×</span>
+              <Stepper
+                value={state.gridUnitsY}
+                onDecrement={() => actions.setGridUnits(state.gridUnitsX, state.gridUnitsY - 1)}
+                onIncrement={() => actions.setGridUnits(state.gridUnitsX, state.gridUnitsY + 1)}
+                disableDecrement={state.gridUnitsY <= LIMITS.GRID_MIN}
+                disableIncrement={state.gridUnitsY >= maxGridY}
+                title="Grid Y"
+              />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>Grid Size</TooltipContent>
+        </Tooltip>
 
         {/* 3. Height */}
-        <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
-          <RulerDimensionLine className="w-4 h-4 text-zinc-400 shrink-0 rotate-90" aria-hidden="true" />
-          <Stepper
-            value={state.heightUnits}
-            onDecrement={() => actions.setHeightUnits(state.heightUnits - 1)}
-            onIncrement={() => actions.setHeightUnits(state.heightUnits + 1)}
-            disableDecrement={state.heightUnits <= LIMITS.HEIGHT_MIN}
-            disableIncrement={state.heightUnits >= LIMITS.HEIGHT_MAX}
-            suffix="u"
-            title={`Height: ${state.heightUnits}u (${state.heightUnits * GRIDFINITY.HEIGHT_UNIT}mm)`}
-          />
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
+              <RulerDimensionLine className="w-4 h-4 text-zinc-400 shrink-0 rotate-90" aria-hidden="true" />
+              <Stepper
+                value={state.heightUnits}
+                onDecrement={() => actions.setHeightUnits(state.heightUnits - 1)}
+                onIncrement={() => actions.setHeightUnits(state.heightUnits + 1)}
+                disableDecrement={state.heightUnits <= LIMITS.HEIGHT_MIN}
+                disableIncrement={state.heightUnits >= LIMITS.HEIGHT_MAX}
+                suffix="u"
+                title={`Height: ${state.heightUnits}u (${state.heightUnits * GRIDFINITY.HEIGHT_UNIT}mm)`}
+              />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>Bin Height ({state.heightUnits * GRIDFINITY.HEIGHT_UNIT}mm)</TooltipContent>
+        </Tooltip>
 
         {/* 4. Border Radius */}
-        <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
-          <SquareRoundCorner className="w-4 h-4 text-zinc-400 shrink-0" aria-hidden="true" />
-          <Stepper
-            value={state.borderRadius}
-            onDecrement={() => actions.setBorderRadius(Math.max(LIMITS.BORDER_RADIUS_MIN, +(state.borderRadius - 0.5).toFixed(1)))}
-            onIncrement={() => actions.setBorderRadius(Math.min(LIMITS.BORDER_RADIUS_MAX, +(state.borderRadius + 0.5).toFixed(1)))}
-            disableDecrement={state.borderRadius <= LIMITS.BORDER_RADIUS_MIN}
-            disableIncrement={state.borderRadius >= LIMITS.BORDER_RADIUS_MAX}
-            suffix="mm"
-            title={`Border Radius: ${state.borderRadius}mm`}
-          />
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
+              <SquareRoundCorner className="w-4 h-4 text-zinc-400 shrink-0" aria-hidden="true" />
+              <Stepper
+                value={state.borderRadius}
+                onDecrement={() => actions.setBorderRadius(Math.max(LIMITS.BORDER_RADIUS_MIN, +(state.borderRadius - 0.5).toFixed(1)))}
+                onIncrement={() => actions.setBorderRadius(Math.min(LIMITS.BORDER_RADIUS_MAX, +(state.borderRadius + 0.5).toFixed(1)))}
+                disableDecrement={state.borderRadius <= LIMITS.BORDER_RADIUS_MIN}
+                disableIncrement={state.borderRadius >= LIMITS.BORDER_RADIUS_MAX}
+                suffix="mm"
+                title={`Border Radius: ${state.borderRadius}mm`}
+              />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>Corner Radius</TooltipContent>
+        </Tooltip>
 
         {/* 5. Magnet Holes */}
-        <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
-          <Magnet className="w-4 h-4 text-zinc-400 shrink-0" aria-hidden="true" />
-          <ToggleSwitch
-            checked={state.magnetHoles}
-            onChange={actions.setMagnetHoles}
-            label="Magnet Holes"
-          />
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
+              <Magnet className="w-4 h-4 text-zinc-400 shrink-0" aria-hidden="true" />
+              <ToggleSwitch
+                checked={state.magnetHoles}
+                onChange={actions.setMagnetHoles}
+                label="Magnet Holes"
+              />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>Magnet Holes</TooltipContent>
+        </Tooltip>
 
         {/* 6. Add / Delete Cell */}
         <div className="flex items-center gap-1 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
-          <button
-            onClick={() => actions.addCell()}
-            disabled={!canAddCell}
-            aria-label="Add Cell"
-            className="h-7 w-7 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => actions.addCell()}
+                disabled={!canAddCell}
+                aria-label="Add Cell"
+                className="h-7 w-7 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Add Cell</TooltipContent>
+          </Tooltip>
           {meta.selectedCell && (
-            <button
-              onClick={() => actions.deleteCell(meta.selectedCell!.id)}
-              aria-label="Delete Selected Cell"
-              className="h-7 w-7 flex items-center justify-center bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => actions.deleteCell(meta.selectedCell!.id)}
+                  aria-label="Delete Selected Cell"
+                  className="h-7 w-7 flex items-center justify-center bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Delete Cell</TooltipContent>
+            </Tooltip>
           )}
         </div>
 
         {/* 7. Export */}
         <div className="flex items-center gap-1 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
-          <button
-            onClick={exportBaseplate}
-            disabled={isExporting || state.gridUnitsX === 0 || state.gridUnitsY === 0}
-            aria-label="Export Baseplate"
-            className="h-7 flex items-center gap-1.5 px-2 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-200 text-xs font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Baseplate</span>
-          </button>
-          <button
-            onClick={exportBins}
-            disabled={isExporting || state.cells.length === 0}
-            aria-label="Export All Bins"
-            className="h-7 flex items-center gap-1.5 px-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white text-xs font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Bins ({state.cells.length})</span>
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={exportBaseplate}
+                disabled={isExporting || state.gridUnitsX === 0 || state.gridUnitsY === 0}
+                aria-label="Export Baseplate"
+                className="h-7 flex items-center gap-1.5 px-2 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-200 text-xs font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Baseplate</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Export Baseplate STL</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={exportBins}
+                disabled={isExporting || state.cells.length === 0}
+                aria-label="Export All Bins"
+                className="h-7 flex items-center gap-1.5 px-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white text-xs font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Bins ({state.cells.length})</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Export All Bins STL</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </nav>
