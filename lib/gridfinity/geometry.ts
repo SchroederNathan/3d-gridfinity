@@ -136,7 +136,8 @@ export function createBinGeometry(config: GridfinityConfig): THREE.BufferGeometr
 
   const wallGeometry = new THREE.ExtrudeGeometry(outerShape, wallExtrudeSettings)
   wallGeometry.rotateX(-Math.PI / 2)
-  wallGeometry.translate(0, baseHeight, 0)
+  // Offset walls slightly above the base to prevent Z-fighting on the floor
+  wallGeometry.translate(0, baseHeight + 0.01, 0)
 
   const mergedGeometry = mergeGeometries([baseGeometry, wallGeometry])
   return mergedGeometry ?? baseGeometry

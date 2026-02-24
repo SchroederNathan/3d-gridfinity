@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState, useCallback } from 'react'
+import { useMemo, useRef, useState, useCallback, useEffect } from 'react'
 import { Canvas, useThree, ThreeEvent } from '@react-three/fiber'
 import { OrbitControls, Environment, ContactShadows, Center } from '@react-three/drei'
 import { useDrawer } from './DrawerContext'
@@ -81,10 +81,11 @@ function ResizeHandle({ position, direction, cell, gridUnitsX, gridUnitsY, onRes
   const startSpan = useRef({ x: cell.spanX, y: cell.spanY })
   const planeRef = useRef(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0))
   const raycaster = useRef(new THREE.Raycaster())
+  const pointerIdRef = useRef<number | null>(null)
 
   const { state } = useDrawer()
 
-  const getWorldPosition = useCallback((e: PointerEvent): THREE.Vector3 | null => {
+  const getWorldPosition = useCallback((e: PointerEvent | MouseEvent): THREE.Vector3 | null => {
     const rect = gl.domElement.getBoundingClientRect()
     const mouse = new THREE.Vector2(
       ((e.clientX - rect.left) / rect.width) * 2 - 1,
@@ -96,6 +97,55 @@ function ResizeHandle({ position, direction, cell, gridUnitsX, gridUnitsY, onRes
     return hit ? intersection : null
   }, [camera, gl])
 
+  // Use document-level listeners so dragging works even when pointer leaves the handle
+  useEffect(() => {
+    if (!dragging) return
+
+    const onMove = (e: PointerEvent) => {
+      if (!startPos.current) return
+
+      const currentPos = getWorldPosition(e)
+      if (!currentPos) return
+
+      const delta = currentPos.clone().sub(startPos.current)
+      const cellSize = GRIDFINITY.CELL_SIZE
+
+      let newSpanX = startSpan.current.x
+      let newSpanY = startSpan.current.y
+
+      if (direction === 'x' || direction === 'xy') {
+        const deltaUnitsX = Math.round(delta.x / cellSize)
+        newSpanX = Math.max(1, startSpan.current.x + deltaUnitsX)
+      }
+      if (direction === 'y' || direction === 'xy') {
+        const deltaUnitsY = Math.round(delta.z / cellSize)
+        newSpanY = Math.max(1, startSpan.current.y + deltaUnitsY)
+      }
+
+      if (canResize(state.cells, cell.id, newSpanX, newSpanY, gridUnitsX, gridUnitsY)) {
+        onResize(newSpanX, newSpanY)
+      }
+    }
+
+    const onUp = (e: PointerEvent) => {
+      setDragging(false)
+      startPos.current = null
+      if (pointerIdRef.current !== null) {
+        try { gl.domElement.releasePointerCapture(pointerIdRef.current) } catch {}
+      }
+      pointerIdRef.current = null
+      document.body.style.cursor = 'auto'
+      document.dispatchEvent(new Event('resize-handle-end'))
+    }
+
+    document.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerup', onUp)
+    return () => {
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', onUp)
+    }
+  }, [dragging, getWorldPosition, direction, cell, state.cells, gridUnitsX, gridUnitsY, onResize, gl.domElement])
+
   const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation()
     setDragging(true)
@@ -104,42 +154,10 @@ function ResizeHandle({ position, direction, cell, gridUnitsX, gridUnitsY, onRes
     if (worldPos) {
       startPos.current = worldPos.clone()
     }
+    pointerIdRef.current = e.pointerId
     gl.domElement.setPointerCapture(e.pointerId)
+    document.dispatchEvent(new Event('resize-handle-start'))
   }, [cell.spanX, cell.spanY, getWorldPosition, gl.domElement])
-
-  const handlePointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
-    if (!dragging || !startPos.current) return
-
-    const currentPos = getWorldPosition(e.nativeEvent)
-    if (!currentPos) return
-
-    const delta = currentPos.clone().sub(startPos.current)
-    const cellSize = GRIDFINITY.CELL_SIZE
-
-    let newSpanX = startSpan.current.x
-    let newSpanY = startSpan.current.y
-
-    if (direction === 'x' || direction === 'xy') {
-      const deltaUnitsX = Math.round(delta.x / cellSize)
-      newSpanX = Math.max(1, startSpan.current.x + deltaUnitsX)
-    }
-    if (direction === 'y' || direction === 'xy') {
-      const deltaUnitsY = Math.round(delta.z / cellSize)
-      newSpanY = Math.max(1, startSpan.current.y + deltaUnitsY)
-    }
-
-    if (newSpanX !== cell.spanX || newSpanY !== cell.spanY) {
-      if (canResize(state.cells, cell.id, newSpanX, newSpanY, gridUnitsX, gridUnitsY)) {
-        onResize(newSpanX, newSpanY)
-      }
-    }
-  }, [dragging, getWorldPosition, direction, cell, state.cells, gridUnitsX, gridUnitsY, onResize])
-
-  const handlePointerUp = useCallback((e: ThreeEvent<PointerEvent>) => {
-    setDragging(false)
-    startPos.current = null
-    gl.domElement.releasePointerCapture(e.pointerId)
-  }, [gl.domElement])
 
   const getCursor = () => {
     if (direction === 'x') return 'ew-resize'
@@ -151,8 +169,6 @@ function ResizeHandle({ position, direction, cell, gridUnitsX, gridUnitsY, onRes
     <mesh
       position={position}
       onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
       onPointerOver={(e) => {
         e.stopPropagation()
         setHovered(true)
@@ -285,6 +301,7 @@ function BaseplateMesh({
 
 function Scene() {
   const { state, actions } = useDrawer()
+  const orbitRef = useRef<any>(null)
 
   const maxDim = Math.max(
     state.gridUnitsX * GRIDFINITY.CELL_SIZE,
@@ -292,6 +309,18 @@ function Scene() {
     state.heightUnits * GRIDFINITY.HEIGHT_UNIT
   )
   const cameraDistance = maxDim * 2.5
+
+  // Disable orbit controls while any resize handle is dragging
+  useEffect(() => {
+    const onDown = () => { if (orbitRef.current) orbitRef.current.enabled = false }
+    const onUp = () => { if (orbitRef.current) orbitRef.current.enabled = true }
+    document.addEventListener('resize-handle-start', onDown)
+    document.addEventListener('resize-handle-end', onUp)
+    return () => {
+      document.removeEventListener('resize-handle-start', onDown)
+      document.removeEventListener('resize-handle-end', onUp)
+    }
+  }, [])
 
   const handleBackgroundClick = useCallback(() => {
     actions.selectCell(null)
@@ -320,19 +349,21 @@ function Scene() {
             magnetHoles={state.magnetHoles}
             onBackgroundClick={handleBackgroundClick}
           />
-          {state.cells.map((cell) => (
-            <SelectableBin
-              key={cell.id}
-              cell={cell}
-              heightUnits={state.heightUnits}
-              borderRadius={state.borderRadius}
-              gridUnitsX={state.gridUnitsX}
-              gridUnitsY={state.gridUnitsY}
-              isSelected={cell.id === state.selectedCellId}
-              onSelect={() => actions.selectCell(cell.id)}
-              onResize={(spanX, spanY) => handleResize(cell.id, spanX, spanY)}
-            />
-          ))}
+          <group position={[0, GRIDFINITY.BASE_HEIGHT, 0]}>
+            {state.cells.map((cell) => (
+              <SelectableBin
+                key={cell.id}
+                cell={cell}
+                heightUnits={state.heightUnits}
+                borderRadius={state.borderRadius}
+                gridUnitsX={state.gridUnitsX}
+                gridUnitsY={state.gridUnitsY}
+                isSelected={cell.id === state.selectedCellId}
+                onSelect={() => actions.selectCell(cell.id)}
+                onResize={(spanX, spanY) => handleResize(cell.id, spanX, spanY)}
+              />
+            ))}
+          </group>
         </group>
       </Center>
 
@@ -345,6 +376,7 @@ function Scene() {
       />
 
       <OrbitControls
+        ref={orbitRef}
         makeDefault
         minDistance={cameraDistance * 0.3}
         maxDistance={cameraDistance * 3}

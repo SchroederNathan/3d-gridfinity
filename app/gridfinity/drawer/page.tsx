@@ -17,11 +17,8 @@ const DrawerLayoutGenerator = dynamic(
 function LoadingState() {
   return (
     <div className="flex flex-col lg:flex-row gap-4 h-full animate-pulse">
-      <div className="flex-1 flex flex-col gap-4">
-        <div className="flex-1 min-h-[200px] bg-zinc-800 rounded-xl" />
-        <div className="h-[350px] bg-zinc-800 rounded-xl" />
-      </div>
-      <div className="w-full lg:w-80 bg-zinc-800 rounded-xl h-[600px]" />
+      <div className="flex-1 min-h-[500px] bg-zinc-800 rounded-xl" />
+      <div className="w-full lg:w-80 bg-zinc-800 rounded-xl min-h-[500px]" />
     </div>
   )
 }

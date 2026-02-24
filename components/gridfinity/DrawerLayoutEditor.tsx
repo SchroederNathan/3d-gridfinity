@@ -79,32 +79,16 @@ export function DrawerLayoutEditor() {
       }
 
       if (
-        newSpanX !== resizing.startSpanX ||
-        newSpanY !== resizing.startSpanY
+        canResize(
+          state.cells,
+          resizing.cellId,
+          newSpanX,
+          newSpanY,
+          state.gridUnitsX,
+          state.gridUnitsY
+        )
       ) {
-        if (
-          canResize(
-            state.cells,
-            resizing.cellId,
-            newSpanX,
-            newSpanY,
-            state.gridUnitsX,
-            state.gridUnitsY
-          )
-        ) {
-          actions.resizeCell(resizing.cellId, newSpanX, newSpanY)
-          setResizing((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  startSpanX: newSpanX,
-                  startSpanY: newSpanY,
-                  startMouseX: e.clientX,
-                  startMouseY: e.clientY,
-                }
-              : null
-          )
-        }
+        actions.resizeCell(resizing.cellId, newSpanX, newSpanY)
       }
     },
     [resizing, state.cells, state.gridUnitsX, state.gridUnitsY, actions]
