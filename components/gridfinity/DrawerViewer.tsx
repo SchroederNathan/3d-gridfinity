@@ -874,12 +874,6 @@ function HudToolbar() {
                   <span className="text-xs text-zinc-500 tabular-nums">{preset.width} &times; {preset.depth}</span>
                 </button>
               ))}
-              <button
-                onClick={() => setPresetsOpen(false)}
-                className="w-full flex items-center px-2 py-1.5 rounded-md text-sm text-zinc-400 hover:bg-zinc-800 transition-colors text-left mt-0.5 border-t border-zinc-800"
-              >
-                Custom
-              </button>
             </div>
           </PopoverContent>
         </Popover>
