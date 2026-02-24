@@ -45,7 +45,7 @@ function GridSize() {
         label="Width (X)"
         value={state.gridX}
         min={LIMITS.GRID_MIN}
-        max={LIMITS.GRID_MAX}
+        max={20}
         onChange={actions.setGridX}
         unit="cells"
       />
@@ -53,7 +53,7 @@ function GridSize() {
         label="Depth (Y)"
         value={state.gridY}
         min={LIMITS.GRID_MIN}
-        max={LIMITS.GRID_MAX}
+        max={20}
         onChange={actions.setGridY}
         unit="cells"
       />

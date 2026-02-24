@@ -12,7 +12,7 @@ export const GRIDFINITY = {
 
 export const LIMITS = {
   GRID_MIN: 1,
-  GRID_MAX: 10,
+  GRID_MAX: Infinity,
   HEIGHT_MIN: 1,
   HEIGHT_MAX: 10,
   BORDER_RADIUS_MIN: 0,
