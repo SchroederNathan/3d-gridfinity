@@ -92,22 +92,71 @@ function addMagnetHoles(
 
 export function createBaseplateGeometry(config: GridfinityConfig, cellSizes?: CellSizes): THREE.BufferGeometry {
   const dims = calculateDimensions(config, cellSizes)
-  const height = GRIDFINITY.BASE_HEIGHT
+  const csX = cellSizes?.cellSizeX ?? GRIDFINITY.CELL_SIZE
+  const csY = cellSizes?.cellSizeY ?? GRIDFINITY.CELL_SIZE
 
-  const outerShape = createRoundedRectShape(dims.width, dims.depth, config.borderRadius)
+  const slabHeight = 2.15          // bottom solid slab
+  const wallHeight = GRIDFINITY.BASE_HEIGHT - slabHeight  // = ~2.85mm raised grid walls
+  const wallThickness = 0.8        // thin wall between cells
+  const chamfer = 0.4              // top-edge chamfer on each cell pocket
 
-  const extrudeSettings: THREE.ExtrudeGeometryOptions = {
-    depth: height,
+  const geometries: THREE.BufferGeometry[] = []
+
+  // ── 1. Bottom slab with rounded outer corners ──────────────
+  const slabShape = createRoundedRectShape(dims.width, dims.depth, config.borderRadius)
+  const slabGeom = new THREE.ExtrudeGeometry(slabShape, {
+    depth: slabHeight,
     bevelEnabled: true,
     bevelSize: GRIDFINITY.FILLET_BOTTOM,
     bevelThickness: GRIDFINITY.FILLET_BOTTOM,
     bevelSegments: 3,
+  })
+  slabGeom.rotateX(-Math.PI / 2)
+  geometries.push(slabGeom)
+
+  const hw = dims.width / 2
+  const hd = dims.depth / 2
+
+  // ── 2. X-direction walls (run full depth, one per column boundary) ──
+  for (let x = 0; x <= config.gridX; x++) {
+    const xPos = -hw + x * csX
+    // Clamp to outer boundary so edge walls align with rounded base
+    const wallGeom = new THREE.BoxGeometry(wallThickness, wallHeight, dims.depth)
+    wallGeom.translate(xPos, slabHeight + wallHeight / 2, 0)
+    geometries.push(wallGeom)
   }
 
-  const geometry = new THREE.ExtrudeGeometry(outerShape, extrudeSettings)
-  geometry.rotateX(-Math.PI / 2)
+  // ── 3. Y-direction walls (run full width, one per row boundary) ──
+  for (let y = 0; y <= config.gridY; y++) {
+    const zPos = -hd + y * csY
+    const wallGeom = new THREE.BoxGeometry(dims.width, wallHeight, wallThickness)
+    wallGeom.translate(0, slabHeight + wallHeight / 2, zPos)
+    geometries.push(wallGeom)
+  }
 
-  return addMagnetHoles(geometry, config, cellSizes)
+  // ── 4. Chamfered top rim per cell pocket ──────────────────────
+  // A small inward-bevelled cap on each cell to guide the bin base
+  for (let x = 0; x < config.gridX; x++) {
+    for (let y = 0; y < config.gridY; y++) {
+      const cellCX = -hw + csX * x + csX / 2
+      const cellCZ = -hd + csY * y + csY / 2
+      const innerW = csX - wallThickness
+      const innerD = csY - wallThickness
+
+      // Outer lip shape (cell boundary minus wall)
+      const rimShape = createRoundedRectShape(innerW, innerD, Math.max(0, config.borderRadius - wallThickness * 2))
+      const rimHole  = createRoundedRectShape(innerW - chamfer * 2, innerD - chamfer * 2, Math.max(0, config.borderRadius - wallThickness * 2 - chamfer))
+      rimShape.holes.push(rimHole)
+
+      const rimGeom = new THREE.ExtrudeGeometry(rimShape, { depth: chamfer, bevelEnabled: false })
+      rimGeom.rotateX(-Math.PI / 2)
+      rimGeom.translate(cellCX, GRIDFINITY.BASE_HEIGHT, cellCZ)
+      geometries.push(rimGeom)
+    }
+  }
+
+  const merged = mergeGeometries(geometries)
+  return merged ?? geometries[0]
 }
 
 export function createBinGeometry(config: GridfinityConfig, cellSizes?: CellSizes): THREE.BufferGeometry {
