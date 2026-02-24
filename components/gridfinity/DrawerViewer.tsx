@@ -2,12 +2,28 @@
 
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react'
 import { Canvas, useThree, ThreeEvent } from '@react-three/fiber'
-import { OrbitControls, Environment, ContactShadows, Center, Html } from '@react-three/drei'
-import { RulerDimensionLine, SquareRoundCorner } from 'lucide-react'
+import { OrbitControls, Environment, ContactShadows, Center } from '@react-three/drei'
+import {
+  Plus,
+  Minus,
+  Download,
+  Grid3x3,
+  Magnet,
+  Trash2,
+  Ruler,
+  RulerDimensionLine,
+  SquareRoundCorner,
+} from 'lucide-react'
 import { useDrawer } from './DrawerContext'
 import { createBaseplateForDrawer, createBinForCell } from '@/lib/gridfinity/geometry'
 import { canResize, canPlaceCell } from '@/lib/gridfinity/layout'
 import { GRIDFINITY, LIMITS } from '@/lib/gridfinity/constants'
+import {
+  generateSTLBlob,
+  downloadBlob,
+  generateDrawerBaseplateFilename,
+  mergeGeometriesForExport,
+} from '@/lib/gridfinity/export-stl'
 import type { LayoutCell } from '@/lib/gridfinity/layout'
 import * as THREE from 'three'
 
@@ -301,7 +317,6 @@ function SelectableBin({
 
   onMoveRef.current = onMove
 
-  // Document-level drag listeners
   useEffect(() => {
     if (!dragging) return
 
@@ -321,7 +336,6 @@ function SelectableBin({
       const newGridX = startGrid.current.x + deltaUnitsX
       const newGridY = startGrid.current.y + deltaUnitsZ
 
-      // Check validity
       const movedCell: LayoutCell = { ...cell, gridX: newGridX, gridY: newGridY }
       const otherCells = state.cells.filter((c) => c.id !== cell.id)
       const valid = canPlaceCell(otherCells, movedCell, gridUnitsX, gridUnitsY)
@@ -331,7 +345,6 @@ function SelectableBin({
     }
 
     const onPointerUp = (e: PointerEvent) => {
-      // Attempt the move if we have a valid ghost position
       const ghost = ghostRef.current
       if (ghost && ghost.valid && didDrag.current) {
         onMoveRef.current(ghost.gridX, ghost.gridY)
@@ -359,7 +372,6 @@ function SelectableBin({
   }, [dragging, getWorldPosition, cell, state.cells, gridUnitsX, gridUnitsY, cellSize, gl.domElement])
 
   const handleDragStart = useCallback((e: ThreeEvent<PointerEvent>) => {
-    // Don't start drag on resize handles
     setDragging(true)
     didDrag.current = false
     startGrid.current = { x: cell.gridX, y: cell.gridY }
@@ -387,7 +399,6 @@ function SelectableBin({
         onDragStart={handleDragStart}
       />
 
-      {/* Ghost preview during drag */}
       {dragging && ghostPos && (
         <DragGhost
           gridX={ghostPos.gridX}
@@ -403,7 +414,6 @@ function SelectableBin({
 
       {isSelected && !dragging && (
         <>
-          {/* East handle (X+) */}
           <ResizeHandle
             position={[binCenterX + binWidth / 2, binHeight / 2, binCenterZ]}
             direction="x"
@@ -412,7 +422,6 @@ function SelectableBin({
             gridUnitsY={gridUnitsY}
             onResize={onResize}
           />
-          {/* South handle (Z+) */}
           <ResizeHandle
             position={[binCenterX, binHeight / 2, binCenterZ + binDepth / 2]}
             direction="y"
@@ -421,7 +430,6 @@ function SelectableBin({
             gridUnitsY={gridUnitsY}
             onResize={onResize}
           />
-          {/* Corner handle (X+ Z+) */}
           <ResizeHandle
             position={[binCenterX + binWidth / 2, binHeight / 2, binCenterZ + binDepth / 2]}
             direction="xy"
@@ -479,7 +487,6 @@ function GridOverlay({ gridUnitsX, gridUnitsY }: { gridUnitsX: number; gridUnits
   const geometry = useMemo(() => {
     const allPoints: THREE.Vector3[] = []
 
-    // Vertical lines (along Z)
     for (let x = 0; x <= gridUnitsX; x++) {
       const xPos = -(totalWidth / 2) + x * cellSize
       allPoints.push(
@@ -488,7 +495,6 @@ function GridOverlay({ gridUnitsX, gridUnitsY }: { gridUnitsX: number; gridUnits
       )
     }
 
-    // Horizontal lines (along X)
     for (let y = 0; y <= gridUnitsY; y++) {
       const zPos = -(totalDepth / 2) + y * cellSize
       allPoints.push(
@@ -523,7 +529,6 @@ function Scene() {
   )
   const cameraDistance = maxDim * 2.5
 
-  // Disable orbit controls while any resize handle or cell is being dragged
   useEffect(() => {
     const onDown = () => { if (orbitRef.current) orbitRef.current.enabled = false }
     const onUp = () => { if (orbitRef.current) orbitRef.current.enabled = true }
@@ -613,32 +618,136 @@ function Scene() {
   )
 }
 
-// ─── HUD Overlay (HTML on top of Canvas) ────────────────────
+// ─── Stepper Control ────────────────────────────────────────
 
-function HudOverlay() {
+type StepperProps = {
+  value: number
+  onDecrement: () => void
+  onIncrement: () => void
+  disableDecrement: boolean
+  disableIncrement: boolean
+  suffix?: string
+  title?: string
+}
+
+function Stepper({ value, onDecrement, onIncrement, disableDecrement, disableIncrement, suffix, title }: StepperProps) {
+  return (
+    <div className="flex items-center gap-0.5">
+      <button
+        onClick={onDecrement}
+        disabled={disableDecrement}
+        aria-label={`Decrease ${title ?? 'value'}`}
+        className="h-7 w-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+      >
+        <Minus className="w-3.5 h-3.5" />
+      </button>
+      <span className="min-w-[2rem] text-center text-sm font-medium text-zinc-200 tabular-nums" title={title}>
+        {value}{suffix}
+      </span>
+      <button
+        onClick={onIncrement}
+        disabled={disableIncrement}
+        aria-label={`Increase ${title ?? 'value'}`}
+        className="h-7 w-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+      >
+        <Plus className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  )
+}
+
+// ─── Toggle Switch ──────────────────────────────────────────
+
+function ToggleSwitch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={`
+        relative h-6 w-10 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50
+        ${checked ? 'bg-emerald-600' : 'bg-zinc-700'}
+      `}
+    >
+      <span
+        className={`
+          absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm
+          transition-transform ${checked ? 'translate-x-4' : 'translate-x-0'}
+        `}
+      />
+    </button>
+  )
+}
+
+// ─── HUD Bottom Toolbar ─────────────────────────────────────
+
+function HudToolbar() {
   const { state, actions, meta } = useDrawer()
+  const [isExporting, setIsExporting] = useState(false)
 
   const canAddCell =
     state.gridUnitsX > 0 &&
     state.gridUnitsY > 0 &&
     state.cells.length < state.gridUnitsX * state.gridUnitsY
 
-  const totalCells = state.cells.reduce((acc, cell) => acc + cell.spanX * cell.spanY, 0)
-  const gridCells = state.gridUnitsX * state.gridUnitsY
+  const maxGridX = Math.min(LIMITS.GRID_MAX, Math.floor(state.drawerWidthMm / GRIDFINITY.CELL_SIZE))
+  const maxGridY = Math.min(LIMITS.GRID_MAX, Math.floor(state.drawerDepthMm / GRIDFINITY.CELL_SIZE))
+
+  const exportBaseplate = useCallback(() => {
+    setIsExporting(true)
+    try {
+      const geometry = createBaseplateForDrawer(state.gridUnitsX, state.gridUnitsY, {
+        borderRadius: state.borderRadius,
+        magnetHoles: state.magnetHoles,
+      })
+      const blob = generateSTLBlob(geometry)
+      const filename = generateDrawerBaseplateFilename(state.gridUnitsX, state.gridUnitsY)
+      downloadBlob(blob, filename)
+    } finally {
+      setIsExporting(false)
+    }
+  }, [state.gridUnitsX, state.gridUnitsY, state.borderRadius, state.magnetHoles])
+
+  const exportBins = useCallback(() => {
+    if (state.cells.length === 0) return
+    setIsExporting(true)
+    try {
+      const geometries = state.cells.map((cell) =>
+        createBinForCell(
+          cell,
+          { heightUnits: state.heightUnits, borderRadius: state.borderRadius },
+          { gridUnitsX: state.gridUnitsX, gridUnitsY: state.gridUnitsY }
+        )
+      )
+      const merged = mergeGeometriesForExport(geometries)
+      if (merged) {
+        const blob = generateSTLBlob(merged)
+        const filename = `gridfinity-drawer-bins-${state.cells.length}.stl`
+        downloadBlob(blob, filename)
+      }
+    } finally {
+      setIsExporting(false)
+    }
+  }, [state.cells, state.heightUnits, state.borderRadius, state.gridUnitsX, state.gridUnitsY])
 
   return (
-    <div className="absolute inset-0 pointer-events-none">
-      {/* Top-left: Drawer size + Grid controls */}
-      <div className="absolute top-3 left-3 flex flex-col gap-2">
-        {/* Drawer dimensions */}
-        <div className="pointer-events-auto px-3 py-2 bg-zinc-900/80 backdrop-blur-sm rounded-lg border border-zinc-700/50 flex items-center gap-2">
-          <span className="text-xs text-zinc-500 uppercase tracking-wider">Drawer</span>
+    <nav
+      aria-label="Drawer controls"
+      className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-auto"
+      style={{ touchAction: 'manipulation' }}
+    >
+      <div className="flex items-center gap-2 py-2 px-3 bg-zinc-900/90 backdrop-blur-md border border-zinc-700/50 rounded-xl">
+        {/* 1. Drawer Dimensions */}
+        <div className="flex items-center gap-1.5">
+          <Ruler className="w-4 h-4 text-zinc-400 shrink-0" />
           <input
             type="number"
             value={state.drawerWidthMm}
             min={GRIDFINITY.CELL_SIZE}
             onChange={(e) => actions.setDrawerSize(Number(e.target.value), state.drawerDepthMm)}
-            className="w-16 px-1.5 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-sm text-zinc-200 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+            aria-label="Drawer width (mm)"
+            className="w-14 h-7 px-1.5 bg-zinc-800 border border-zinc-700 rounded-md text-sm text-zinc-200 text-center tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
           />
           <span className="text-xs text-zinc-500">×</span>
           <input
@@ -646,171 +755,143 @@ function HudOverlay() {
             value={state.drawerDepthMm}
             min={GRIDFINITY.CELL_SIZE}
             onChange={(e) => actions.setDrawerSize(state.drawerWidthMm, Number(e.target.value))}
-            className="w-16 px-1.5 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-sm text-zinc-200 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+            aria-label="Drawer depth (mm)"
+            className="w-14 h-7 px-1.5 bg-zinc-800 border border-zinc-700 rounded-md text-sm text-zinc-200 text-center tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
           />
-          <span className="text-xs text-zinc-500">mm</span>
+          <span className="text-xs text-zinc-400">mm</span>
         </div>
 
-        {/* Grid size controls */}
-        <div className="pointer-events-auto px-3 py-1.5 bg-zinc-900/80 backdrop-blur-sm rounded-lg border border-zinc-700/50 flex items-center gap-2">
-          <span className="text-xs text-zinc-500 uppercase tracking-wider">Grid</span>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => actions.setGridUnits(state.gridUnitsX - 1, state.gridUnitsY)}
-              disabled={state.gridUnitsX <= LIMITS.GRID_MIN}
-              className="w-6 h-6 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 text-xs rounded transition-colors"
-            >
-              -
-            </button>
-            <span className="text-sm font-medium text-zinc-200 tabular-nums min-w-[1.25rem] text-center">
-              {state.gridUnitsX}
-            </span>
-            <button
-              onClick={() => actions.setGridUnits(state.gridUnitsX + 1, state.gridUnitsY)}
-              disabled={state.gridUnitsX >= Math.min(LIMITS.GRID_MAX, Math.floor(state.drawerWidthMm / GRIDFINITY.CELL_SIZE))}
-              className="w-6 h-6 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 text-xs rounded transition-colors"
-            >
-              +
-            </button>
-          </div>
+        {/* Divider */}
+        <span className="w-px h-6 bg-zinc-700" aria-hidden="true" />
 
-          <span className="text-sm text-zinc-500">×</span>
-
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => actions.setGridUnits(state.gridUnitsX, state.gridUnitsY - 1)}
-              disabled={state.gridUnitsY <= LIMITS.GRID_MIN}
-              className="w-6 h-6 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 text-xs rounded transition-colors"
-            >
-              -
-            </button>
-            <span className="text-sm font-medium text-zinc-200 tabular-nums min-w-[1.25rem] text-center">
-              {state.gridUnitsY}
-            </span>
-            <button
-              onClick={() => actions.setGridUnits(state.gridUnitsX, state.gridUnitsY + 1)}
-              disabled={state.gridUnitsY >= Math.min(LIMITS.GRID_MAX, Math.floor(state.drawerDepthMm / GRIDFINITY.CELL_SIZE))}
-              className="w-6 h-6 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 text-xs rounded transition-colors"
-            >
-              +
-            </button>
-          </div>
-
-          <span className="w-px h-4 bg-zinc-700" />
-
-          <span className="text-sm text-zinc-400">
-            {state.cells.length} bin{state.cells.length !== 1 ? 's' : ''}
-          </span>
-          {gridCells > 0 && (
-            <>
-              <span className="w-px h-4 bg-zinc-700" />
-              <span className="text-sm text-zinc-500">
-                {Math.round((totalCells / gridCells) * 100)}%
-              </span>
-            </>
-          )}
+        {/* 2. Grid */}
+        <div className="flex items-center gap-1.5">
+          <Grid3x3 className="w-4 h-4 text-zinc-400 shrink-0" />
+          <Stepper
+            value={state.gridUnitsX}
+            onDecrement={() => actions.setGridUnits(state.gridUnitsX - 1, state.gridUnitsY)}
+            onIncrement={() => actions.setGridUnits(state.gridUnitsX + 1, state.gridUnitsY)}
+            disableDecrement={state.gridUnitsX <= LIMITS.GRID_MIN}
+            disableIncrement={state.gridUnitsX >= maxGridX}
+            title="Grid X"
+          />
+          <span className="text-xs text-zinc-500">×</span>
+          <Stepper
+            value={state.gridUnitsY}
+            onDecrement={() => actions.setGridUnits(state.gridUnitsX, state.gridUnitsY - 1)}
+            onIncrement={() => actions.setGridUnits(state.gridUnitsX, state.gridUnitsY + 1)}
+            disableDecrement={state.gridUnitsY <= LIMITS.GRID_MIN}
+            disableIncrement={state.gridUnitsY >= maxGridY}
+            title="Grid Y"
+          />
         </div>
-      </div>
 
-      {/* Bottom-center toolbar */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 pointer-events-auto">
-        <div className="flex items-center gap-1 px-2 py-1.5 bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-700/50">
-          {/* Add Cell */}
+        {/* Divider */}
+        <span className="w-px h-6 bg-zinc-700" aria-hidden="true" />
+
+        {/* 3. Height */}
+        <div className="flex items-center gap-1.5">
+          <RulerDimensionLine className="w-4 h-4 text-zinc-400 shrink-0 rotate-90" />
+          <Stepper
+            value={state.heightUnits}
+            onDecrement={() => actions.setHeightUnits(state.heightUnits - 1)}
+            onIncrement={() => actions.setHeightUnits(state.heightUnits + 1)}
+            disableDecrement={state.heightUnits <= LIMITS.HEIGHT_MIN}
+            disableIncrement={state.heightUnits >= LIMITS.HEIGHT_MAX}
+            suffix="u"
+            title={`Height: ${state.heightUnits}u (${state.heightUnits * GRIDFINITY.HEIGHT_UNIT}mm)`}
+          />
+        </div>
+
+        {/* Divider */}
+        <span className="w-px h-6 bg-zinc-700" aria-hidden="true" />
+
+        {/* 4. Border Radius */}
+        <div className="flex items-center gap-1.5">
+          <SquareRoundCorner className="w-4 h-4 text-zinc-400 shrink-0" />
+          <Stepper
+            value={state.borderRadius}
+            onDecrement={() => actions.setBorderRadius(Math.max(LIMITS.BORDER_RADIUS_MIN, +(state.borderRadius - 0.5).toFixed(1)))}
+            onIncrement={() => actions.setBorderRadius(Math.min(LIMITS.BORDER_RADIUS_MAX, +(state.borderRadius + 0.5).toFixed(1)))}
+            disableDecrement={state.borderRadius <= LIMITS.BORDER_RADIUS_MIN}
+            disableIncrement={state.borderRadius >= LIMITS.BORDER_RADIUS_MAX}
+            suffix="mm"
+            title={`Border Radius: ${state.borderRadius}mm`}
+          />
+        </div>
+
+        {/* Divider */}
+        <span className="w-px h-6 bg-zinc-700" aria-hidden="true" />
+
+        {/* 5. Magnet Holes */}
+        <div className="flex items-center gap-1.5">
+          <Magnet className="w-4 h-4 text-zinc-400 shrink-0" />
+          <ToggleSwitch
+            checked={state.magnetHoles}
+            onChange={actions.setMagnetHoles}
+            label="Magnet Holes"
+          />
+        </div>
+
+        {/* Divider */}
+        <span className="w-px h-6 bg-zinc-700" aria-hidden="true" />
+
+        {/* 6. Add / Delete Cell */}
+        <div className="flex items-center gap-1">
           <button
             onClick={() => actions.addCell()}
             disabled={!canAddCell}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white text-sm font-medium rounded-lg transition-colors"
-            title="Add Cell"
+            aria-label="Add Cell"
+            className="h-7 w-7 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus className="w-4 h-4" />
           </button>
-
-          <span className="w-px h-6 bg-zinc-700 mx-1" />
-
-          {/* Height controls */}
-          <div className="flex items-center gap-1">
+          {meta.selectedCell && (
             <button
-              onClick={() => actions.setHeightUnits(state.heightUnits - 1)}
-              disabled={state.heightUnits <= LIMITS.HEIGHT_MIN}
-              className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 text-sm rounded-lg transition-colors"
+              onClick={() => actions.deleteCell(meta.selectedCell!.id)}
+              aria-label="Delete Selected Cell"
+              className="h-7 w-7 flex items-center justify-center bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
             >
-              -
+              <Trash2 className="w-4 h-4" />
             </button>
-            <span className="px-1.5 text-sm font-medium text-zinc-200 tabular-nums flex items-center gap-1.5" title={`Height: ${state.heightUnits}u (${state.heightUnits * GRIDFINITY.HEIGHT_UNIT}mm)`}>
-              <RulerDimensionLine className="w-4 h-4 text-zinc-400 rotate-90" />
-              {state.heightUnits}u
-            </span>
-            <button
-              onClick={() => actions.setHeightUnits(state.heightUnits + 1)}
-              disabled={state.heightUnits >= LIMITS.HEIGHT_MAX}
-              className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 text-sm rounded-lg transition-colors"
-            >
-              +
-            </button>
-          </div>
+          )}
+        </div>
 
-          <span className="w-px h-6 bg-zinc-700 mx-1" />
+        {/* Divider */}
+        <span className="w-px h-6 bg-zinc-700" aria-hidden="true" />
 
-          {/* Border radius quick control */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => actions.setBorderRadius(Math.max(LIMITS.BORDER_RADIUS_MIN, +(state.borderRadius - 0.5).toFixed(1)))}
-              disabled={state.borderRadius <= LIMITS.BORDER_RADIUS_MIN}
-              className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 text-sm rounded-lg transition-colors"
-            >
-              -
-            </button>
-            <span className="px-1.5 text-sm text-zinc-200 tabular-nums flex items-center gap-1.5" title={`Border Radius: ${state.borderRadius}mm`}>
-              <SquareRoundCorner className="w-4 h-4 text-zinc-400" />
-              {state.borderRadius}
-            </span>
-            <button
-              onClick={() => actions.setBorderRadius(Math.min(LIMITS.BORDER_RADIUS_MAX, +(state.borderRadius + 0.5).toFixed(1)))}
-              disabled={state.borderRadius >= LIMITS.BORDER_RADIUS_MAX}
-              className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 text-sm rounded-lg transition-colors"
-            >
-              +
-            </button>
-          </div>
+        {/* 7. Export */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={exportBaseplate}
+            disabled={isExporting || state.gridUnitsX === 0 || state.gridUnitsY === 0}
+            aria-label="Export Baseplate"
+            className="h-7 flex items-center gap-1.5 px-2 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-200 text-xs font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Baseplate</span>
+          </button>
+          <button
+            onClick={exportBins}
+            disabled={isExporting || state.cells.length === 0}
+            aria-label="Export All Bins"
+            className="h-7 flex items-center gap-1.5 px-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white text-xs font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Bins ({state.cells.length})</span>
+          </button>
         </div>
       </div>
-
-      {/* Selected cell floating panel */}
-      {meta.selectedCell && (
-        <SelectedCellPanel cell={meta.selectedCell} />
-      )}
-    </div>
+    </nav>
   )
 }
 
-function SelectedCellPanel({ cell }: { cell: LayoutCell }) {
-  const { actions, state } = useDrawer()
+// ─── HUD Overlay ────────────────────────────────────────────
 
-  // Position the panel near the top-right of the viewer
+function HudOverlay() {
   return (
-    <div className="absolute top-3 right-3 pointer-events-auto">
-      <div className="px-3 py-2 bg-zinc-900/80 backdrop-blur-sm rounded-lg border border-emerald-500/30 flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-500" />
-          <span className="text-sm font-medium text-zinc-200">
-            {cell.spanX}x{cell.spanY}
-          </span>
-          <span className="text-xs text-zinc-500">
-            at ({cell.gridX},{cell.gridY})
-          </span>
-        </div>
-        <button
-          onClick={() => actions.deleteCell(cell.id)}
-          className="px-2 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-medium rounded transition-colors"
-          title="Delete cell"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </button>
-      </div>
+    <div className="absolute inset-0 pointer-events-none">
+      <HudToolbar />
     </div>
   )
 }
