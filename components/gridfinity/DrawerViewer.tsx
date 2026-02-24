@@ -478,6 +478,31 @@ function BaseplateMesh({
   )
 }
 
+// ─── Drawer Outline (physical dimensions) ───────────────────
+
+function DrawerOutline({ drawerWidthMm, drawerDepthMm }: { drawerWidthMm: number; drawerDepthMm: number }) {
+  const geometry = useMemo(() => {
+    const hw = drawerWidthMm / 2
+    const hd = drawerDepthMm / 2
+    const points = [
+      new THREE.Vector3(-hw, 0, -hd),
+      new THREE.Vector3(hw, 0, -hd),
+      new THREE.Vector3(hw, 0, hd),
+      new THREE.Vector3(-hw, 0, hd),
+    ]
+    return new THREE.BufferGeometry().setFromPoints(points)
+  }, [drawerWidthMm, drawerDepthMm])
+
+  // Use lineLoop for a closed outline (no SVG type conflict)
+  return (
+    <group position={[0, 0.1, 0]}>
+      <lineLoop geometry={geometry}>
+        <lineBasicMaterial color="#f59e0b" transparent opacity={0.6} depthTest={false} />
+      </lineLoop>
+    </group>
+  )
+}
+
 // ─── Grid Overlay ───────────────────────────────────────────
 
 function GridOverlay({ gridUnitsX, gridUnitsY }: { gridUnitsX: number; gridUnitsY: number }) {
@@ -524,6 +549,8 @@ function Scene() {
   const orbitRef = useRef<any>(null)
 
   const maxDim = Math.max(
+    state.drawerWidthMm,
+    state.drawerDepthMm,
     state.gridUnitsX * GRIDFINITY.CELL_SIZE,
     state.gridUnitsY * GRIDFINITY.CELL_SIZE,
     state.heightUnits * GRIDFINITY.HEIGHT_UNIT
@@ -576,6 +603,7 @@ function Scene() {
             magnetHoles={state.magnetHoles}
             onBackgroundClick={handleBackgroundClick}
           />
+          <DrawerOutline drawerWidthMm={state.drawerWidthMm} drawerDepthMm={state.drawerDepthMm} />
           <GridOverlay gridUnitsX={state.gridUnitsX} gridUnitsY={state.gridUnitsY} />
           <group position={[0, GRIDFINITY.BASE_HEIGHT, 0]}>
             {state.cells.map((cell) => (
@@ -930,6 +958,8 @@ export function DrawerViewer() {
   const { state } = useDrawer()
 
   const maxDim = Math.max(
+    state.drawerWidthMm || 100,
+    state.drawerDepthMm || 100,
     state.gridUnitsX * GRIDFINITY.CELL_SIZE || 100,
     state.gridUnitsY * GRIDFINITY.CELL_SIZE || 100,
     state.heightUnits * GRIDFINITY.HEIGHT_UNIT

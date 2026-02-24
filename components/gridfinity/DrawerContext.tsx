@@ -105,9 +105,9 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
   const setDrawerSize = useCallback((widthMm: number, depthMm: number) => {
     const maxGrid = calculateGrid(widthMm, depthMm)
     setState((prev) => {
-      // Clamp current grid units to what fits in the new drawer size
-      const newGridX = Math.min(prev.gridUnitsX, maxGrid.gridX)
-      const newGridY = Math.min(prev.gridUnitsY, maxGrid.gridY)
+      // Auto-grow grid to fill new drawer, auto-shrink if drawer got smaller
+      const newGridX = Math.max(LIMITS.GRID_MIN, Math.min(LIMITS.GRID_MAX, maxGrid.gridX))
+      const newGridY = Math.max(LIMITS.GRID_MIN, Math.min(LIMITS.GRID_MAX, maxGrid.gridY))
       const validCells = prev.cells.filter(
         (cell) =>
           cell.gridX + cell.spanX <= newGridX &&
@@ -117,8 +117,8 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
         ...prev,
         drawerWidthMm: widthMm,
         drawerDepthMm: depthMm,
-        gridUnitsX: Math.max(LIMITS.GRID_MIN, newGridX),
-        gridUnitsY: Math.max(LIMITS.GRID_MIN, newGridY),
+        gridUnitsX: newGridX,
+        gridUnitsY: newGridY,
         cells: validCells,
         selectedCellId: validCells.find((c) => c.id === prev.selectedCellId)
           ? prev.selectedCellId
