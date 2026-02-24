@@ -962,7 +962,7 @@ export function DrawerViewer() {
   const cameraDistance = maxDim * 2
 
   return (
-    <div className="relative w-full h-full bg-gradient-to-b from-zinc-800 to-zinc-900">
+    <div className="relative w-screen h-screen bg-zinc-950">
       <Canvas
         camera={{
           position: [cameraDistance, cameraDistance * 0.8, cameraDistance],

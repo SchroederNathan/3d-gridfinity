@@ -76,7 +76,7 @@ export default function RootLayout({
         <JsonLd />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-hidden`}
       >
         <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
       </body>
