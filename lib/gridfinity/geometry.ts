@@ -254,6 +254,8 @@ type LayoutCell = {
   gridY: number
   spanX: number
   spanY: number
+  divisionsX?: number
+  divisionsY?: number
 }
 
 export type BinCellConfig = {
@@ -266,6 +268,42 @@ export type GridContext = {
   gridUnitsY: number
   cellSizeX?: number
   cellSizeY?: number
+}
+
+/** Create internal divider wall geometries for a bin with compartments */
+function createDividerGeometries(
+  binWidth: number,
+  binDepth: number,
+  wallHeight: number,
+  divisionsX: number,
+  divisionsY: number
+): THREE.BufferGeometry[] {
+  const wallThickness = GRIDFINITY.WALL_THICKNESS
+  const dividerGap = 1 // 1mm shorter than outer walls
+  const dividerHeight = wallHeight - dividerGap
+  if (dividerHeight <= 0) return []
+
+  const innerWidth = binWidth - wallThickness * 2
+  const innerDepth = binDepth - wallThickness * 2
+  const geometries: THREE.BufferGeometry[] = []
+
+  // X dividers (vertical walls running along depth)
+  for (let i = 1; i < divisionsX; i++) {
+    const xPos = -innerWidth / 2 + (innerWidth / divisionsX) * i
+    const geom = new THREE.BoxGeometry(wallThickness, dividerHeight, innerDepth)
+    geom.translate(xPos, GRIDFINITY.BASE_HEIGHT + dividerHeight / 2, 0)
+    geometries.push(geom)
+  }
+
+  // Y dividers (horizontal walls running along width)
+  for (let i = 1; i < divisionsY; i++) {
+    const zPos = -innerDepth / 2 + (innerDepth / divisionsY) * i
+    const geom = new THREE.BoxGeometry(innerWidth, dividerHeight, wallThickness)
+    geom.translate(0, GRIDFINITY.BASE_HEIGHT + dividerHeight / 2, zPos)
+    geometries.push(geom)
+  }
+
+  return geometries
 }
 
 export function createBinForCell(
@@ -286,7 +324,25 @@ export function createBinForCell(
   }
 
   const binCellSizes: CellSizes = { cellSizeX: csX, cellSizeY: csY }
-  const geometry = createBinGeometry(binConfig, binCellSizes)
+  let geometry = createBinGeometry(binConfig, binCellSizes)
+
+  // Add internal divider walls if divisions > 1
+  const divisionsX = cell.divisionsX ?? 1
+  const divisionsY = cell.divisionsY ?? 1
+  if (divisionsX > 1 || divisionsY > 1) {
+    const binWidth = cell.spanX * csX
+    const binDepth = cell.spanY * csY
+    const wallHeight = config.heightUnits * GRIDFINITY.HEIGHT_UNIT - GRIDFINITY.BASE_HEIGHT
+    if (wallHeight > 0) {
+      const dividers = createDividerGeometries(
+        binWidth, binDepth, wallHeight, divisionsX, divisionsY
+      )
+      if (dividers.length > 0) {
+        const merged = mergeGeometries([geometry, ...dividers])
+        if (merged) geometry = merged
+      }
+    }
+  }
 
   if (gridContext) {
     const totalWidth = gridContext.gridUnitsX * csX

@@ -13,8 +13,12 @@ import {
   Ruler,
   RulerDimensionLine,
   SquareRoundCorner,
+  Undo2,
+  Redo2,
+  LayoutTemplate,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useDrawer } from './DrawerContext'
 import { createBaseplateForDrawer, createBinForCell } from '@/lib/gridfinity/geometry'
 import { canResize, canPlaceCell } from '@/lib/gridfinity/layout'
@@ -252,7 +256,7 @@ function ResizeHandle({ position, direction, cell, gridUnitsX, gridUnitsY, cellS
         if (!dragging) document.body.style.cursor = 'auto'
       }}
     >
-      <sphereGeometry args={[dragging ? 4 : hovered ? 3.5 : 3, 16, 16]} />
+      <sphereGeometry args={[dragging ? 6 : hovered ? 5.5 : 5, 16, 16]} />
       <meshStandardMaterial
         color={dragging ? '#fbbf24' : hovered ? '#34d399' : '#10b981'}
         emissive={dragging ? '#fbbf24' : '#000000'}
@@ -710,9 +714,21 @@ function ToggleSwitch({ checked, onChange, label }: { checked: boolean; onChange
 
 // ─── HUD Bottom Toolbar ─────────────────────────────────────
 
+// ─── Drawer Size Presets ─────────────────────────────────
+
+const DRAWER_PRESETS = [
+  { name: 'IKEA Alex (wide)', width: 930, depth: 340 },
+  { name: 'IKEA Alex (narrow)', width: 332, depth: 340 },
+  { name: 'IKEA Helmer', width: 260, depth: 380 },
+  { name: 'Milwaukee Packout Drawer', width: 395, depth: 290 },
+  { name: 'Harbor Freight (small)', width: 340, depth: 230 },
+  { name: 'Harbor Freight (large)', width: 560, depth: 380 },
+] as const
+
 function HudToolbar() {
   const { state, actions, meta } = useDrawer()
   const [isExporting, setIsExporting] = useState(false)
+  const [presetsOpen, setPresetsOpen] = useState(false)
   const { cellSizeX, cellSizeY } = meta
 
   const canAddCell =
@@ -764,7 +780,37 @@ function HudToolbar() {
       style={{ touchAction: 'manipulation' }}
     >
       <div className="flex flex-wrap items-center justify-center gap-2 py-2 px-3 bg-zinc-900/90 backdrop-blur-md border border-zinc-700/50 rounded-xl max-w-full">
-        {/* 1. Drawer Dimensions */}
+        {/* 0. Undo / Redo */}
+        <div className="flex items-center gap-1 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => actions.undo()}
+                disabled={!meta.canUndo}
+                aria-label="Undo"
+                className="h-7 w-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+              >
+                <Undo2 className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => actions.redo()}
+                disabled={!meta.canRedo}
+                aria-label="Redo"
+                className="h-7 w-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+              >
+                <Redo2 className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Redo (Ctrl+Shift+Z)</TooltipContent>
+          </Tooltip>
+        </div>
+
+        {/* 1. Drawer Dimensions + Presets */}
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
@@ -791,6 +837,52 @@ function HudToolbar() {
           </TooltipTrigger>
           <TooltipContent>Drawer Dimensions</TooltipContent>
         </Tooltip>
+
+        {/* Preset Drawer Sizes */}
+        <Popover open={presetsOpen} onOpenChange={setPresetsOpen}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <button
+                  aria-label="Drawer Size Presets"
+                  className="h-9 w-9 flex items-center justify-center bg-zinc-800/50 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+                >
+                  <LayoutTemplate className="w-4 h-4" />
+                </button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Drawer Presets</TooltipContent>
+          </Tooltip>
+          <PopoverContent
+            side="top"
+            align="center"
+            sideOffset={8}
+            className="w-64 p-0 bg-zinc-900 border-zinc-700/50 rounded-lg shadow-xl"
+          >
+            <div className="p-2">
+              <p className="px-2 py-1.5 text-xs font-medium text-zinc-400 uppercase tracking-wider">Drawer Presets</p>
+              {DRAWER_PRESETS.map((preset) => (
+                <button
+                  key={preset.name}
+                  onClick={() => {
+                    actions.setDrawerSize(preset.width, preset.depth)
+                    setPresetsOpen(false)
+                  }}
+                  className="w-full flex items-center justify-between px-2 py-1.5 rounded-md text-sm text-zinc-200 hover:bg-zinc-800 transition-colors text-left"
+                >
+                  <span>{preset.name}</span>
+                  <span className="text-xs text-zinc-500 tabular-nums">{preset.width} &times; {preset.depth}</span>
+                </button>
+              ))}
+              <button
+                onClick={() => setPresetsOpen(false)}
+                className="w-full flex items-center px-2 py-1.5 rounded-md text-sm text-zinc-400 hover:bg-zinc-800 transition-colors text-left mt-0.5 border-t border-zinc-800"
+              >
+                Custom
+              </button>
+            </div>
+          </PopoverContent>
+        </Popover>
 
         {/* 2. Grid */}
         <Tooltip>
@@ -902,6 +994,35 @@ function HudToolbar() {
             </Tooltip>
           )}
         </div>
+
+        {/* 6b. Bin Divisions (only when cell selected) */}
+        {meta.selectedCell && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1.5 px-1.5 py-1 bg-zinc-800/50 rounded-lg">
+                <Grid3x3 className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />
+                <Stepper
+                  value={meta.selectedCell.divisionsX ?? 1}
+                  onDecrement={() => actions.setDivisions(meta.selectedCell!.id, (meta.selectedCell!.divisionsX ?? 1) - 1, meta.selectedCell!.divisionsY ?? 1)}
+                  onIncrement={() => actions.setDivisions(meta.selectedCell!.id, (meta.selectedCell!.divisionsX ?? 1) + 1, meta.selectedCell!.divisionsY ?? 1)}
+                  disableDecrement={(meta.selectedCell.divisionsX ?? 1) <= 1}
+                  disableIncrement={(meta.selectedCell.divisionsX ?? 1) >= 6}
+                  title="Divisions X"
+                />
+                <span className="text-xs text-zinc-500">&times;</span>
+                <Stepper
+                  value={meta.selectedCell.divisionsY ?? 1}
+                  onDecrement={() => actions.setDivisions(meta.selectedCell!.id, meta.selectedCell!.divisionsX ?? 1, (meta.selectedCell!.divisionsY ?? 1) - 1)}
+                  onIncrement={() => actions.setDivisions(meta.selectedCell!.id, meta.selectedCell!.divisionsX ?? 1, (meta.selectedCell!.divisionsY ?? 1) + 1)}
+                  disableDecrement={(meta.selectedCell.divisionsY ?? 1) <= 1}
+                  disableIncrement={(meta.selectedCell.divisionsY ?? 1) >= 6}
+                  title="Divisions Y"
+                />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Bin Compartments</TooltipContent>
+          </Tooltip>
+        )}
 
         {/* 7. Export */}
         <div className="flex items-center gap-1 px-1.5 py-1 bg-zinc-800/50 rounded-lg">

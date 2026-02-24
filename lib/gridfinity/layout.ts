@@ -4,6 +4,8 @@ export type LayoutCell = {
   gridY: number
   spanX: number
   spanY: number
+  divisionsX?: number
+  divisionsY?: number
 }
 
 export type GridDimensions = {

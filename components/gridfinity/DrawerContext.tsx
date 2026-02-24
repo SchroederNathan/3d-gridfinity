@@ -6,6 +6,8 @@ import {
   useState,
   useCallback,
   useMemo,
+  useEffect,
+  useRef,
   type ReactNode,
 } from 'react'
 import { LIMITS } from '@/lib/gridfinity/constants'
@@ -40,6 +42,9 @@ type DrawerActions = {
   deleteCell: (cellId: string) => void
   selectCell: (cellId: string | null) => void
   clearCells: () => void
+  setDivisions: (cellId: string, divisionsX: number, divisionsY: number) => void
+  undo: () => void
+  redo: () => void
 }
 
 type DrawerMeta = {
@@ -47,6 +52,8 @@ type DrawerMeta = {
   selectedCell: LayoutCell | null
   cellSizeX: number
   cellSizeY: number
+  canUndo: boolean
+  canRedo: boolean
 }
 
 type DrawerContextValue = {
@@ -82,24 +89,110 @@ type DrawerProviderProps = {
   initialState?: Partial<DrawerLayoutState>
 }
 
+const MAX_HISTORY = 50
+
 let cellIdCounter = 0
 function generateCellId(): string {
   return `cell-${++cellIdCounter}`
 }
 
+/** Compare states ignoring selectedCellId (selection isn't an undoable mutation) */
+function statesEqual(a: DrawerLayoutState, b: DrawerLayoutState): boolean {
+  return (
+    a.drawerWidthMm === b.drawerWidthMm &&
+    a.drawerDepthMm === b.drawerDepthMm &&
+    a.gridUnitsX === b.gridUnitsX &&
+    a.gridUnitsY === b.gridUnitsY &&
+    a.heightUnits === b.heightUnits &&
+    a.borderRadius === b.borderRadius &&
+    a.magnetHoles === b.magnetHoles &&
+    a.cells === b.cells
+  )
+}
+
 export function DrawerProvider({ children, initialState }: DrawerProviderProps) {
-  const [state, setState] = useState<DrawerLayoutState>(() => ({
+  const [state, setStateRaw] = useState<DrawerLayoutState>(() => ({
     ...DEFAULT_DRAWER_STATE,
     ...initialState,
   }))
   const [isExporting, setIsExporting] = useState(false)
+
+  // ─── Undo/Redo History ──────────────────────────────────
+  const historyRef = useRef<DrawerLayoutState[]>([])
+  const futureRef = useRef<DrawerLayoutState[]>([])
+
+  /** setState wrapper that pushes to history for undoable mutations */
+  const setState = useCallback(
+    (updater: (prev: DrawerLayoutState) => DrawerLayoutState) => {
+      setStateRaw((prev) => {
+        const next = updater(prev)
+        if (statesEqual(prev, next)) return next
+        // Push previous state to history
+        historyRef.current = [...historyRef.current, prev].slice(-MAX_HISTORY)
+        // Clear redo future on new mutation
+        futureRef.current = []
+        return next
+      })
+    },
+    []
+  )
+
+  /** setState that does NOT push to history (for selection-only changes) */
+  const setStateNoHistory = useCallback(
+    (updater: (prev: DrawerLayoutState) => DrawerLayoutState) => {
+      setStateRaw(updater)
+    },
+    []
+  )
+
+  const undo = useCallback(() => {
+    setStateRaw((prev) => {
+      if (historyRef.current.length === 0) return prev
+      const history = [...historyRef.current]
+      const previous = history.pop()!
+      historyRef.current = history
+      futureRef.current = [...futureRef.current, prev]
+      return { ...previous, selectedCellId: prev.selectedCellId }
+    })
+  }, [])
+
+  const redo = useCallback(() => {
+    setStateRaw((prev) => {
+      if (futureRef.current.length === 0) return prev
+      const future = [...futureRef.current]
+      const next = future.pop()!
+      futureRef.current = future
+      historyRef.current = [...historyRef.current, prev]
+      return { ...next, selectedCellId: prev.selectedCellId }
+    })
+  }, [])
+
+  // ─── Keyboard shortcuts ─────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        undo()
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault()
+        redo()
+      }
+      // Also support Ctrl+Y for redo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault()
+        redo()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [undo, redo])
 
   const clamp = (value: number, min: number, max: number) =>
     Math.max(min, Math.min(max, value))
 
   const setDrawerSize = useCallback((widthMm: number, depthMm: number) => {
     setState((prev) => {
-      // Keep current grid units — cell sizes adjust automatically
       const validCells = prev.cells.filter(
         (cell) =>
           cell.gridX + cell.spanX <= prev.gridUnitsX &&
@@ -115,11 +208,10 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
           : null,
       }
     })
-  }, [])
+  }, [setState])
 
   const setGridUnits = useCallback((gridX: number, gridY: number) => {
     setState((prev) => {
-      // Only clamp to LIMITS — no drawer-size-based cap (cells stretch to fit)
       const clampedX = clamp(gridX, LIMITS.GRID_MIN, LIMITS.GRID_MAX)
       const clampedY = clamp(gridY, LIMITS.GRID_MIN, LIMITS.GRID_MAX)
       const validCells = prev.cells.filter(
@@ -137,25 +229,25 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
           : null,
       }
     })
-  }, [])
+  }, [setState])
 
   const setHeightUnits = useCallback((h: number) => {
     setState((prev) => ({
       ...prev,
       heightUnits: clamp(h, LIMITS.HEIGHT_MIN, LIMITS.HEIGHT_MAX),
     }))
-  }, [])
+  }, [setState])
 
   const setBorderRadius = useCallback((r: number) => {
     setState((prev) => ({
       ...prev,
       borderRadius: clamp(r, LIMITS.BORDER_RADIUS_MIN, LIMITS.BORDER_RADIUS_MAX),
     }))
-  }, [])
+  }, [setState])
 
   const setMagnetHoles = useCallback((enabled: boolean) => {
     setState((prev) => ({ ...prev, magnetHoles: enabled }))
-  }, [])
+  }, [setState])
 
   const addCell = useCallback((): LayoutCell | null => {
     let newCell: LayoutCell | null = null
@@ -178,7 +270,7 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
       }
     })
     return newCell
-  }, [])
+  }, [setState])
 
   const resizeCell = useCallback(
     (cellId: string, spanX: number, spanY: number): boolean => {
@@ -197,7 +289,7 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
       })
       return success
     },
-    []
+    [setState]
   )
 
   const moveCell = useCallback(
@@ -222,7 +314,7 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
       })
       return success
     },
-    []
+    [setState]
   )
 
   const deleteCell = useCallback((cellId: string) => {
@@ -231,11 +323,11 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
       cells: prev.cells.filter((c) => c.id !== cellId),
       selectedCellId: prev.selectedCellId === cellId ? null : prev.selectedCellId,
     }))
-  }, [])
+  }, [setState])
 
   const selectCell = useCallback((cellId: string | null) => {
-    setState((prev) => ({ ...prev, selectedCellId: cellId }))
-  }, [])
+    setStateNoHistory((prev) => ({ ...prev, selectedCellId: cellId }))
+  }, [setStateNoHistory])
 
   const clearCells = useCallback(() => {
     setState((prev) => ({
@@ -243,7 +335,18 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
       cells: [],
       selectedCellId: null,
     }))
-  }, [])
+  }, [setState])
+
+  const setDivisions = useCallback((cellId: string, divisionsX: number, divisionsY: number) => {
+    const dx = Math.max(1, Math.min(6, Math.round(divisionsX)))
+    const dy = Math.max(1, Math.min(6, Math.round(divisionsY)))
+    setState((prev) => ({
+      ...prev,
+      cells: prev.cells.map((cell) =>
+        cell.id === cellId ? { ...cell, divisionsX: dx, divisionsY: dy } : cell
+      ),
+    }))
+  }, [setState])
 
   const selectedCell = useMemo(
     () => state.cells.find((c) => c.id === state.selectedCellId) ?? null,
@@ -252,6 +355,9 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
 
   const cellSizeX = state.drawerWidthMm / state.gridUnitsX
   const cellSizeY = state.drawerDepthMm / state.gridUnitsY
+
+  const canUndo = historyRef.current.length > 0
+  const canRedo = futureRef.current.length > 0
 
   const actions = useMemo<DrawerActions>(
     () => ({
@@ -266,6 +372,9 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
       deleteCell,
       selectCell,
       clearCells,
+      setDivisions,
+      undo,
+      redo,
     }),
     [
       setDrawerSize,
@@ -279,6 +388,9 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
       deleteCell,
       selectCell,
       clearCells,
+      setDivisions,
+      undo,
+      redo,
     ]
   )
 
@@ -288,8 +400,10 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
       selectedCell,
       cellSizeX,
       cellSizeY,
+      canUndo,
+      canRedo,
     }),
-    [isExporting, selectedCell, cellSizeX, cellSizeY]
+    [isExporting, selectedCell, cellSizeX, cellSizeY, canUndo, canRedo]
   )
 
   const value = useMemo<DrawerContextValue>(
