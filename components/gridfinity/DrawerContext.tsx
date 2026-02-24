@@ -31,6 +31,7 @@ type DrawerLayoutState = {
 
 type DrawerActions = {
   setDrawerSize: (widthMm: number, depthMm: number) => void
+  setGridUnits: (gridX: number, gridY: number) => void
   setHeightUnits: (h: number) => void
   setBorderRadius: (r: number) => void
   setMagnetHoles: (enabled: boolean) => void
@@ -116,6 +117,29 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
         drawerDepthMm: depthMm,
         gridUnitsX: grid.gridX,
         gridUnitsY: grid.gridY,
+        cells: validCells,
+        selectedCellId: validCells.find((c) => c.id === prev.selectedCellId)
+          ? prev.selectedCellId
+          : null,
+      }
+    })
+  }, [])
+
+  const setGridUnits = useCallback((gridX: number, gridY: number) => {
+    const clampedX = Math.max(LIMITS.GRID_MIN, Math.min(LIMITS.GRID_MAX, gridX))
+    const clampedY = Math.max(LIMITS.GRID_MIN, Math.min(LIMITS.GRID_MAX, gridY))
+    setState((prev) => {
+      const validCells = prev.cells.filter(
+        (cell) =>
+          cell.gridX + cell.spanX <= clampedX &&
+          cell.gridY + cell.spanY <= clampedY
+      )
+      return {
+        ...prev,
+        gridUnitsX: clampedX,
+        gridUnitsY: clampedY,
+        drawerWidthMm: clampedX * GRIDFINITY.CELL_SIZE,
+        drawerDepthMm: clampedY * GRIDFINITY.CELL_SIZE,
         cells: validCells,
         selectedCellId: validCells.find((c) => c.id === prev.selectedCellId)
           ? prev.selectedCellId
@@ -245,6 +269,7 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
   const actions = useMemo<DrawerActions>(
     () => ({
       setDrawerSize,
+      setGridUnits,
       setHeightUnits,
       setBorderRadius,
       setMagnetHoles,
@@ -257,6 +282,7 @@ export function DrawerProvider({ children, initialState }: DrawerProviderProps) 
     }),
     [
       setDrawerSize,
+      setGridUnits,
       setHeightUnits,
       setBorderRadius,
       setMagnetHoles,

@@ -502,9 +502,9 @@ function GridOverlay({ gridUnitsX, gridUnitsY }: { gridUnitsX: number; gridUnits
   }, [gridUnitsX, gridUnitsY, cellSize, totalWidth, totalDepth])
 
   return (
-    <group position={[0, GRIDFINITY.BASE_HEIGHT + 0.05, 0]}>
+    <group position={[0, GRIDFINITY.BASE_HEIGHT + 0.5, 0]}>
       <lineSegments geometry={geometry}>
-        <lineBasicMaterial color="#3f3f46" transparent opacity={0.6} />
+        <lineBasicMaterial color="#a1a1aa" transparent opacity={0.4} depthTest={false} />
       </lineSegments>
     </group>
   )
@@ -628,13 +628,55 @@ function HudOverlay() {
 
   return (
     <div className="absolute inset-0 pointer-events-none">
-      {/* Top-left info badge */}
+      {/* Top-left grid size controls */}
       <div className="absolute top-3 left-3 flex items-center gap-2">
-        <div className="pointer-events-auto px-3 py-1.5 bg-zinc-900/80 backdrop-blur-sm rounded-lg border border-zinc-700/50 flex items-center gap-3">
-          <span className="text-sm font-medium text-zinc-200">
-            {state.gridUnitsX}x{state.gridUnitsY}
-          </span>
+        <div className="pointer-events-auto px-2 py-1.5 bg-zinc-900/80 backdrop-blur-sm rounded-lg border border-zinc-700/50 flex items-center gap-2">
+          {/* Grid X */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => actions.setGridUnits(state.gridUnitsX - 1, state.gridUnitsY)}
+              disabled={state.gridUnitsX <= LIMITS.GRID_MIN}
+              className="w-6 h-6 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 text-xs rounded transition-colors"
+            >
+              -
+            </button>
+            <span className="text-sm font-medium text-zinc-200 tabular-nums min-w-[1.25rem] text-center">
+              {state.gridUnitsX}
+            </span>
+            <button
+              onClick={() => actions.setGridUnits(state.gridUnitsX + 1, state.gridUnitsY)}
+              disabled={state.gridUnitsX >= LIMITS.GRID_MAX}
+              className="w-6 h-6 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 text-xs rounded transition-colors"
+            >
+              +
+            </button>
+          </div>
+
+          <span className="text-sm text-zinc-500">×</span>
+
+          {/* Grid Y */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => actions.setGridUnits(state.gridUnitsX, state.gridUnitsY - 1)}
+              disabled={state.gridUnitsY <= LIMITS.GRID_MIN}
+              className="w-6 h-6 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 text-xs rounded transition-colors"
+            >
+              -
+            </button>
+            <span className="text-sm font-medium text-zinc-200 tabular-nums min-w-[1.25rem] text-center">
+              {state.gridUnitsY}
+            </span>
+            <button
+              onClick={() => actions.setGridUnits(state.gridUnitsX, state.gridUnitsY + 1)}
+              disabled={state.gridUnitsY >= LIMITS.GRID_MAX}
+              className="w-6 h-6 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-600 text-zinc-300 text-xs rounded transition-colors"
+            >
+              +
+            </button>
+          </div>
+
           <span className="w-px h-4 bg-zinc-700" />
+
           <span className="text-sm text-zinc-400">
             {state.cells.length} bin{state.cells.length !== 1 ? 's' : ''}
           </span>
