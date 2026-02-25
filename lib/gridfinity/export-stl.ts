@@ -132,24 +132,3 @@ export function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url)
 }
 
-export function exportDrawerBaseplate(
-  geometry: THREE.BufferGeometry,
-  gridUnitsX: number,
-  gridUnitsY: number
-): void {
-  const blob = generateSTLBlob(geometry)
-  const filename = generateDrawerBaseplateFilename(gridUnitsX, gridUnitsY)
-  downloadBlob(blob, filename)
-}
-
-export function exportDrawerBins(
-  geometries: THREE.BufferGeometry[],
-  cells: LayoutCell[]
-): void {
-  const merged = mergeGeometriesForExport(geometries)
-  if (!merged) return
-
-  const blob = generateSTLBlob(merged)
-  const filename = `gridfinity-drawer-bins-${cells.length}.stl`
-  downloadBlob(blob, filename)
-}

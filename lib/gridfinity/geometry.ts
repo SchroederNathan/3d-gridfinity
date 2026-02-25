@@ -2,13 +2,13 @@ import * as THREE from 'three'
 import { GRIDFINITY } from './constants'
 import type { GridfinityConfig } from './constants'
 
-export type Dimensions = {
+type Dimensions = {
   width: number
   depth: number
   height: number
 }
 
-export type CellSizes = {
+type CellSizes = {
   cellSizeX: number
   cellSizeY: number
 }
@@ -225,13 +225,7 @@ function mergeGeometries(geometries: THREE.BufferGeometry[]): THREE.BufferGeomet
   return merged
 }
 
-export function createGridfinityGeometry(config: GridfinityConfig): THREE.BufferGeometry {
-  return config.modelType === 'baseplate'
-    ? createBaseplateGeometry(config)
-    : createBinGeometry(config)
-}
-
-export type DrawerBaseplateConfig = {
+type DrawerBaseplateConfig = {
   borderRadius: number
 }
 
@@ -262,12 +256,12 @@ type LayoutCell = {
   stackingLip?: boolean
 }
 
-export type BinCellConfig = {
+type BinCellConfig = {
   heightUnits: number
   borderRadius: number
 }
 
-export type GridContext = {
+type GridContext = {
   gridUnitsX: number
   gridUnitsY: number
   cellSizeX?: number

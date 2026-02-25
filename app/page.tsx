@@ -1,25 +1,17 @@
-'use client'
-
 import { Suspense } from 'react'
-import dynamic from 'next/dynamic'
+import type { Metadata } from 'next'
+import DrawerLayoutClient from './drawer-layout-client'
 
-const DrawerLayoutGenerator = dynamic(
-  () =>
-    import('@/components/gridfinity/DrawerLayoutGenerator').then((mod) => ({
-      default: mod.DrawerLayoutGenerator,
-    })),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-screen w-screen bg-zinc-950 animate-pulse" />
-    ),
-  }
-)
+export const metadata: Metadata = {
+  title: 'Gridfinity Generator — Free 3D Drawer Layout Tool with STL Export',
+  description:
+    'Design custom Gridfinity drawer layouts in 3D. Drag, resize, and arrange bins visually, then export STL files for 3D printing. Free, open-source, no sign-up required.',
+}
 
 export default function Home() {
   return (
     <Suspense fallback={<div className="h-screen w-screen bg-zinc-950" />}>
-      <DrawerLayoutGenerator />
+      <DrawerLayoutClient />
     </Suspense>
   )
 }

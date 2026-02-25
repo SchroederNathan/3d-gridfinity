@@ -8,6 +8,15 @@ export function JsonLd() {
     url: "https://gridfinity.nathanschroeder.ca",
     applicationCategory: "DesignApplication",
     operatingSystem: "Any",
+    browserRequirements: "Requires a modern browser with WebGL support",
+    featureList: [
+      "3D drawer layout visualization",
+      "Drag and resize gridfinity bins",
+      "STL file export for 3D printing",
+      "Custom baseplate dimensions",
+      "Configurable bin heights and wall thickness",
+    ],
+    screenshot: "https://gridfinity.nathanschroeder.ca/opengraph-image",
     offers: {
       "@type": "Offer",
       price: "0",
@@ -16,13 +25,16 @@ export function JsonLd() {
     author: {
       "@type": "Person",
       name: "Nathan Schroeder",
+      url: "https://nathanschroeder.ca",
     },
   }
 
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-    />
+      suppressHydrationWarning
+    >
+      {JSON.stringify(structuredData)}
+    </script>
   )
 }

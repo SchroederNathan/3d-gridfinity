@@ -9,12 +9,7 @@ export type LayoutCell = {
   stackingLip?: boolean
 }
 
-export type GridDimensions = {
-  gridX: number
-  gridY: number
-}
-
-export type EmptyRect = {
+type EmptyRect = {
   x: number
   y: number
   spanX: number

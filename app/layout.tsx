@@ -59,6 +59,9 @@ export const metadata: Metadata = {
     apple: { url: "/favicons/apple-touch-icon.png" },
   },
   manifest: "/favicons/site.webmanifest",
+  other: {
+    "theme-color": "#09090b",
+  },
   robots: {
     index: true,
     follow: true,

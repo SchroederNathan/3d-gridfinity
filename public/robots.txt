@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://gridfinity.nathanschroeder.ca/sitemap.xml
