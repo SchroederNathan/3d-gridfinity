@@ -5,6 +5,7 @@ import { Canvas, useThree, ThreeEvent } from '@react-three/fiber'
 import { OrbitControls, Environment, ContactShadows, Center } from '@react-three/drei'
 import { useDrawer } from './DrawerContext'
 import { HudToolbar } from './HudToolbar'
+import { FilamentEstimator } from './FilamentEstimator'
 import { createBaseplateForDrawer, createBinForCell } from '@/lib/gridfinity/geometry'
 import { canResize, canPlaceCell } from '@/lib/gridfinity/layout'
 import { GRIDFINITY } from '@/lib/gridfinity/constants'
@@ -651,6 +652,7 @@ function HudOverlay() {
   return (
     <div className="absolute inset-0 pointer-events-none">
       <HudToolbar />
+      <FilamentEstimator />
     </div>
   )
 }
