@@ -134,8 +134,7 @@ export function FilamentEstimator() {
   }, [state, cellSizeX, cellSizeY, material, pricePerKg, infillPct])
 
   return (
-    <div className="absolute top-4 right-4 w-56 pointer-events-auto select-none">
-      <div className="bg-zinc-900/90 backdrop-blur-md border border-zinc-700/50 rounded-xl shadow-xl overflow-hidden">
+    <div className="bg-zinc-900/90 backdrop-blur-md border border-zinc-700/50 rounded-xl shadow-xl overflow-hidden">
         {/* Header */}
         <button
           onClick={() => setOpen((o) => !o)}
@@ -256,6 +255,5 @@ export function FilamentEstimator() {
           </div>
         )}
       </div>
-    </div>
   )
 }

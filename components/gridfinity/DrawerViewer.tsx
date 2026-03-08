@@ -6,6 +6,7 @@ import { OrbitControls, Environment, ContactShadows, Center } from '@react-three
 import { useDrawer } from './DrawerContext'
 import { HudToolbar } from './HudToolbar'
 import { FilamentEstimator } from './FilamentEstimator'
+import { PrintTimeEstimator } from './PrintTimeEstimator'
 import { createBaseplateForDrawer, createBinForCell } from '@/lib/gridfinity/geometry'
 import { canResize, canPlaceCell } from '@/lib/gridfinity/layout'
 import { GRIDFINITY } from '@/lib/gridfinity/constants'
@@ -652,7 +653,11 @@ function HudOverlay() {
   return (
     <div className="absolute inset-0 pointer-events-none">
       <HudToolbar />
-      <FilamentEstimator />
+      {/* Right-side estimator panel stack */}
+      <div className="absolute top-4 right-4 w-56 flex flex-col gap-2 pointer-events-auto select-none">
+        <FilamentEstimator />
+        <PrintTimeEstimator />
+      </div>
     </div>
   )
 }
